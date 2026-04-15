@@ -1,5 +1,7 @@
 package com.nomad.travel
 
+import android.content.Context
+import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -23,10 +25,22 @@ import com.nomad.travel.ui.setup.ModelSetupScreen
 import com.nomad.travel.ui.theme.NomadTheme
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.util.Locale
 
 private enum class Destination { LANGUAGE, SETUP, CHAT, SETTINGS }
 
 class MainActivity : ComponentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        val app = newBase.applicationContext as NomadApp
+        val code = runBlocking { app.container.prefs.languageBlocking() } ?: "ko"
+        val locale = Locale(code)
+        Locale.setDefault(locale)
+        val config = Configuration(newBase.resources.configuration)
+        config.setLocale(locale)
+        super.attachBaseContext(newBase.createConfigurationContext(config))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -65,8 +79,7 @@ class MainActivity : ComponentActivity() {
                             onContinue = { code ->
                                 scope.launch {
                                     prefs.setLanguage(code)
-                                    destination = if (gemma.isActiveReady())
-                                        Destination.CHAT else Destination.SETUP
+                                    recreate()
                                 }
                             }
                         )
@@ -77,7 +90,8 @@ class MainActivity : ComponentActivity() {
                             onOpenSettings = { destination = Destination.SETTINGS }
                         )
                         Destination.SETTINGS -> SettingsScreen(
-                            onBack = { destination = Destination.CHAT }
+                            onBack = { destination = Destination.CHAT },
+                            onLanguageChanged = { recreate() }
                         )
                     }
                 }

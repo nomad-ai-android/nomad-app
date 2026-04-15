@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,11 +85,11 @@ fun ModelSetupScreen(
             Spacer(Modifier.size(14.dp))
             Column {
                 Text(
-                    text = "모델 선택",
+                    text = stringResource(R.string.setup_title),
                     style = MaterialTheme.typography.headlineMedium
                 )
                 Text(
-                    text = "오프라인 추론에 사용할 AI 모델을 선택하세요.",
+                    text = stringResource(R.string.setup_subtitle),
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -132,7 +133,9 @@ fun ModelSetupScreen(
             )
         ) {
             Text(
-                text = if (canProceed) "이 모델로 시작" else "먼저 모델을 다운로드하세요",
+                text = stringResource(
+                    if (canProceed) R.string.setup_start else R.string.setup_download_first
+                ),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )

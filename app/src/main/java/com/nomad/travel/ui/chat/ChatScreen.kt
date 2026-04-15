@@ -8,19 +8,20 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -63,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -74,6 +76,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nomad.travel.R
 import com.nomad.travel.data.ChatMessage
+import kotlinx.coroutines.delay
 import com.nomad.travel.data.Role
 import com.nomad.travel.ui.theme.NomadAssistantBubble
 import com.nomad.travel.ui.theme.NomadGlow
@@ -215,7 +218,7 @@ private fun ChatTopBar(onOpenSettings: () -> Unit) {
                 )
                 Spacer(Modifier.size(6.dp))
                 Text(
-                    text = "온디바이스 · 온라인",
+                    text = stringResource(R.string.chat_top_status),
                     style = MaterialTheme.typography.bodySmall
                 )
             }
@@ -230,7 +233,7 @@ private fun ChatTopBar(onOpenSettings: () -> Unit) {
         ) {
             Icon(
                 Icons.Default.Settings,
-                contentDescription = "설정",
+                contentDescription = stringResource(R.string.chat_settings_desc),
                 tint = NomadMist,
                 modifier = Modifier.size(20.dp)
             )
@@ -260,13 +263,13 @@ private fun EmptyState(modifier: Modifier = Modifier) {
         }
         Spacer(Modifier.size(20.dp))
         Text(
-            text = "어디로 떠나시나요?",
+            text = stringResource(R.string.chat_empty_title),
             style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.size(10.dp))
         Text(
-            text = "메뉴판 촬영 번역 · 여행지 검색 ·\n환율/지출 관리 · 현지 정보까지\n무엇이든 물어보세요.",
+            text = stringResource(R.string.chat_empty_body),
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center
         )
@@ -278,9 +281,9 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 @Composable
 private fun SuggestionChips() {
     val chips = listOf(
-        "📍 도쿄 3일 코스 짜줘",
-        "💴 엔화 환율 알려줘",
-        "🍜 이 메뉴판 번역해줘"
+        stringResource(R.string.chat_suggestion_1),
+        stringResource(R.string.chat_suggestion_2),
+        stringResource(R.string.chat_suggestion_3)
     )
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         chips.forEach { chip ->
@@ -313,7 +316,7 @@ private fun MessageRow(msg: ChatMessage) {
             AssistantAvatar()
             Spacer(Modifier.size(10.dp))
         }
-        BoxWithConstraints(
+        Box(
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
             Column(horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
@@ -329,12 +332,15 @@ private fun MessageRow(msg: ChatMessage) {
                 }
                 MessageBubble(msg, isUser)
                 msg.toolTag?.takeIf { !isUser && it != "error" }?.let { tag ->
-                    Text(
-                        text = toolTagLabel(tag),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = NomadMuted,
-                        modifier = Modifier.padding(start = 4.dp, top = 4.dp)
-                    )
+                    val label = toolTagLabel(tag)
+                    if (label != null) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = NomadMuted,
+                            modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                        )
+                    }
                 }
             }
         }
@@ -358,6 +364,11 @@ private fun AssistantAvatar() {
 
 @Composable
 private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
+    if (msg.pending && !isUser) {
+        PendingBubble(msg.id)
+        return
+    }
+
     val shape = if (isUser) {
         RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp)
     } else {
@@ -372,17 +383,43 @@ private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
             .background(bg)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
-        if (msg.pending) {
-            TypingDots()
-        } else {
-            Text(
-                text = msg.text,
-                style = MaterialTheme.typography.bodyLarge.copy(
-                    color = textColor,
-                    fontSize = 15.sp,
-                    lineHeight = 22.sp
-                )
+        Text(
+            text = msg.text,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                color = textColor,
+                fontSize = 15.sp,
+                lineHeight = 22.sp
             )
+        )
+    }
+}
+
+@Composable
+private fun PendingBubble(key: String) {
+    var visible by remember(key) { mutableStateOf(false) }
+    LaunchedEffect(key) {
+        delay(350)
+        visible = true
+    }
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(260)),
+        exit = fadeOut(tween(160))
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(
+                    RoundedCornerShape(
+                        topStart = 4.dp,
+                        topEnd = 20.dp,
+                        bottomStart = 20.dp,
+                        bottomEnd = 20.dp
+                    )
+                )
+                .background(NomadAssistantBubble)
+                .padding(horizontal = 14.dp, vertical = 10.dp)
+        ) {
+            TypingDots()
         }
     }
 }
@@ -390,22 +427,25 @@ private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
 @Composable
 private fun TypingDots() {
     val transition = rememberInfiniteTransition(label = "dots")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "phase"
-    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
         modifier = Modifier.height(22.dp)
     ) {
         repeat(3) { i ->
-            val alpha = ((phase - i).coerceIn(0f, 1f) * 0.8f + 0.2f)
+            val alpha by transition.animateFloat(
+                initialValue = 0.25f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(
+                        durationMillis = 620,
+                        delayMillis = i * 180,
+                        easing = FastOutSlowInEasing
+                    ),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "dot$i"
+            )
             Box(
                 modifier = Modifier
                     .size(7.dp)
@@ -438,7 +478,10 @@ private fun AttachmentPreview(uri: Uri?, onClear: () -> Unit) {
                 )
             }
             Spacer(Modifier.size(10.dp))
-            Text("이미지 첨부됨", style = MaterialTheme.typography.bodySmall)
+            Text(
+                text = stringResource(R.string.chat_image_attached),
+                style = MaterialTheme.typography.bodySmall
+            )
             Spacer(Modifier.weight(1f))
             Box(
                 modifier = Modifier
@@ -474,7 +517,7 @@ private fun InputBar(
         CircleIconButton(onCamera) {
             Icon(
                 Icons.Default.PhotoCamera,
-                contentDescription = "카메라",
+                contentDescription = stringResource(R.string.camera),
                 tint = NomadMist,
                 modifier = Modifier.size(20.dp)
             )
@@ -482,7 +525,7 @@ private fun InputBar(
         CircleIconButton(onGallery) {
             Icon(
                 Icons.Default.PhotoLibrary,
-                contentDescription = "갤러리",
+                contentDescription = stringResource(R.string.gallery),
                 tint = NomadMist,
                 modifier = Modifier.size(20.dp)
             )
@@ -497,7 +540,7 @@ private fun InputBar(
         ) {
             if (input.isEmpty()) {
                 Text(
-                    text = "메시지 입력…",
+                    text = stringResource(R.string.chat_input_placeholder),
                     style = LocalTextStyle.current.copy(
                         color = NomadMuted,
                         fontSize = 15.sp
@@ -529,7 +572,7 @@ private fun InputBar(
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.Send,
-                contentDescription = "전송",
+                contentDescription = stringResource(R.string.send),
                 tint = if (canSend) NomadSilver else NomadMuted,
                 modifier = Modifier.size(18.dp)
             )
@@ -549,12 +592,13 @@ private fun CircleIconButton(onClick: () -> Unit, content: @Composable () -> Uni
     ) { content() }
 }
 
-private fun toolTagLabel(tag: String): String = when (tag) {
-    "menu_translate" -> "· 메뉴 번역"
-    "menu_search" -> "· 메뉴 검색"
-    "expense" -> "· 지출 기록됨"
-    "travel" -> "· 여행 정보"
-    else -> "· $tag"
+@Composable
+private fun toolTagLabel(tag: String): String? = when (tag) {
+    "menu_translate" -> stringResource(R.string.tool_label_menu_translate)
+    "menu_search" -> stringResource(R.string.tool_label_menu_search)
+    "expense" -> stringResource(R.string.tool_label_expense)
+    "travel" -> stringResource(R.string.tool_label_travel)
+    else -> null
 }
 
 private fun createTempImageUri(context: Context): Uri {

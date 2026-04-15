@@ -31,8 +31,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.nomad.travel.R
 import com.nomad.travel.llm.DownloadStatus
 import com.nomad.travel.llm.ModelEntry
 import com.nomad.travel.ui.theme.NomadAssistantBubble
@@ -180,7 +182,7 @@ private fun LockIcon() {
     ) {
         Icon(
             Icons.Default.Lock,
-            contentDescription = "지원되지 않는 모델",
+            contentDescription = stringResource(R.string.model_unsupported),
             tint = NomadMuted,
             modifier = Modifier.size(14.dp)
         )
@@ -190,7 +192,7 @@ private fun LockIcon() {
 @Composable
 private fun BlockedBanner(entry: ModelEntry) {
     val gb = entry.minRamBytes / (1024.0 * 1024.0 * 1024.0)
-    val label = String.format(Locale.US, "RAM %.0f GB 이상 필요 · 이 기기는 지원하지 않습니다", gb)
+    val label = stringResource(R.string.model_blocked_banner, gb.toFloat())
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -216,11 +218,7 @@ private fun BlockedBanner(entry: ModelEntry) {
 @Composable
 private fun WarningBanner(entry: ModelEntry) {
     val gb = entry.warnRamBytes / (1024.0 * 1024.0 * 1024.0)
-    val label = String.format(
-        Locale.US,
-        "RAM %.0f GB 미만에서는 속도가 느리거나 불안정할 수 있습니다",
-        gb
-    )
+    val label = stringResource(R.string.model_warn_banner, gb.toFloat())
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -275,7 +273,7 @@ private fun StatusRow(
                         text = String.format(Locale.US, "%.0f%%", target * 100),
                         style = MaterialTheme.typography.labelSmall.copy(color = NomadGlow)
                     )
-                    TextPill("취소", NomadMist, onCancel)
+                    TextPill(stringResource(R.string.common_cancel), NomadMist, onCancel)
                 }
             }
         }
@@ -291,26 +289,30 @@ private fun StatusRow(
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = "다운로드 완료",
+                    text = stringResource(R.string.model_downloaded),
                     style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF78E3A9))
                 )
                 Spacer(Modifier.weight(1f))
-                TextPill("삭제", MaterialTheme.colorScheme.error, onDelete)
+                TextPill(
+                    stringResource(R.string.common_delete),
+                    MaterialTheme.colorScheme.error,
+                    onDelete
+                )
             }
         }
         row.status is DownloadStatus.Failed -> {
             Column {
                 Text(
-                    text = "실패: ${row.status.message}",
+                    text = stringResource(R.string.model_failed_prefix, row.status.message),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.error
                 )
                 Spacer(Modifier.size(6.dp))
-                DownloadButton(row.entry, label = "다시 시도", onDownload)
+                DownloadButton(row.entry, label = stringResource(R.string.model_retry), onDownload)
             }
         }
         else -> {
-            DownloadButton(row.entry, label = "다운로드", onDownload)
+            DownloadButton(row.entry, label = stringResource(R.string.model_download), onDownload)
         }
     }
 }

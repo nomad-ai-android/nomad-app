@@ -13,7 +13,6 @@ import com.nomad.travel.llm.GemmaEngine
 import com.nomad.travel.llm.ModelCatalog
 import com.nomad.travel.llm.ModelDownloader
 import com.nomad.travel.llm.ModelEntry
-import com.nomad.travel.tools.Prompt
 import com.nomad.travel.ui.setup.ModelRow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,7 +23,7 @@ import kotlinx.coroutines.launch
 
 data class SettingsUiState(
     val language: String = "ko",
-    val systemPrompt: String = Prompt.defaultPersona(),
+    val systemPrompt: String = "",
     val activeModelId: String = ModelCatalog.recommended.id,
     val modelRows: List<ModelRow> = emptyList()
 )
@@ -61,7 +60,7 @@ class SettingsViewModel(
         }
         SettingsUiState(
             language = lang ?: "ko",
-            systemPrompt = prompt?.takeIf { it.isNotBlank() } ?: Prompt.defaultPersona(),
+            systemPrompt = prompt.orEmpty(),
             activeModelId = activeId ?: ModelCatalog.recommended.id,
             modelRows = rows
         )

@@ -13,4 +13,58 @@
     <string name="tool_menu_search">メニュー検索</string>
     <string name="tool_expense">支出管理</string>
     <string name="tool_travel">旅行情報</string>
+
+    <string name="chat_top_status">オンデバイス · オンライン</string>
+    <string name="chat_empty_title">どこへ行きますか？</string>
+    <string name="chat_empty_body">メニュー翻訳 · 観光地検索 ·\n為替/支出管理 · 現地情報まで、\n何でも聞いてください。</string>
+    <string name="chat_input_placeholder">メッセージを入力…</string>
+    <string name="chat_image_attached">画像を添付しました</string>
+    <string name="chat_suggestion_1">📍 東京3日間の旅程を立てて</string>
+    <string name="chat_suggestion_2">💴 円の為替レートを教えて</string>
+    <string name="chat_suggestion_3">🍜 このメニューを翻訳して</string>
+    <string name="chat_settings_desc">設定</string>
+    <string name="tool_label_menu_translate">· メニュー翻訳</string>
+    <string name="tool_label_menu_search">· メニュー検索</string>
+    <string name="tool_label_expense">· 支出を記録</string>
+    <string name="tool_label_travel">· 旅行情報</string>
+
+    <string name="settings_title">設定</string>
+    <string name="settings_back">戻る</string>
+    <string name="settings_language">言語</string>
+    <string name="settings_language_change">言語を変更</string>
+    <string name="settings_system_prompt">共通プロンプト</string>
+    <string name="settings_system_prompt_hint">追加指示を入力（任意）</string>
+    <string name="settings_prompt_save">保存</string>
+    <string name="settings_prompt_clear">クリア</string>
+    <string name="settings_model_management">モデル管理</string>
+    <string name="settings_model_show">モデル一覧を表示</string>
+    <string name="settings_model_hide">折りたたむ</string>
+    <string name="settings_model_help">カードをタップするとそのモデルが有効になります。ダウンロード済みのモデルのみ選択できます。</string>
+    <string name="settings_chat_section">チャット</string>
+    <string name="settings_clear_chats">チャット履歴をすべて削除</string>
+    <string name="settings_clear_confirm_title">すべてのチャット履歴を削除しますか？</string>
+    <string name="settings_clear_confirm_body">元に戻せません。</string>
+    <string name="settings_clear_confirm_ok">すべて削除</string>
+    <string name="settings_delete_model_title">このモデルを削除しますか？</string>
+    <string name="settings_delete_model_body">再度使うには再ダウンロードが必要です。</string>
+
+    <string name="common_cancel">キャンセル</string>
+    <string name="common_delete">削除</string>
+
+    <string name="language_subtitle">あなたの旅行AIパートナー</string>
+    <string name="language_select_title">言語を選択</string>
+    <string name="language_continue">続行</string>
+
+    <string name="setup_title">モデルを選択</string>
+    <string name="setup_subtitle">オフライン推論に使う AI モデルを選択してください。</string>
+    <string name="setup_start">このモデルで開始</string>
+    <string name="setup_download_first">先にモデルをダウンロードしてください</string>
+
+    <string name="model_unsupported">サポートされていないモデル</string>
+    <string name="model_blocked_banner">RAM %1$.0f GB 以上が必要 · このデバイスは非対応です</string>
+    <string name="model_warn_banner">RAM %1$.0f GB 未満のデバイスでは動作が遅い・不安定になる場合があります</string>
+    <string name="model_downloaded">ダウンロード完了</string>
+    <string name="model_download">ダウンロード</string>
+    <string name="model_retry">再試行</string>
+    <string name="model_failed_prefix">失敗: %1$s</string>
 </resources>

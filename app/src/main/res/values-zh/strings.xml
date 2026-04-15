@@ -13,4 +13,58 @@
     <string name="tool_menu_search">菜单搜索</string>
     <string name="tool_expense">开支</string>
     <string name="tool_travel">旅行信息</string>
+
+    <string name="chat_top_status">本地 · 在线</string>
+    <string name="chat_empty_title">想去哪里？</string>
+    <string name="chat_empty_body">菜单翻译 · 景点搜索 ·\n汇率/记账 · 当地资讯 —\n尽管问我。</string>
+    <string name="chat_input_placeholder">输入消息…</string>
+    <string name="chat_image_attached">已附加图片</string>
+    <string name="chat_suggestion_1">📍 帮我规划东京三日游</string>
+    <string name="chat_suggestion_2">💴 查一下日元汇率</string>
+    <string name="chat_suggestion_3">🍜 翻译这张菜单</string>
+    <string name="chat_settings_desc">设置</string>
+    <string name="tool_label_menu_translate">· 菜单翻译</string>
+    <string name="tool_label_menu_search">· 菜单搜索</string>
+    <string name="tool_label_expense">· 已记账</string>
+    <string name="tool_label_travel">· 旅行信息</string>
+
+    <string name="settings_title">设置</string>
+    <string name="settings_back">返回</string>
+    <string name="settings_language">语言</string>
+    <string name="settings_language_change">更改语言</string>
+    <string name="settings_system_prompt">自定义提示词</string>
+    <string name="settings_system_prompt_hint">输入附加指令（可选）</string>
+    <string name="settings_prompt_save">保存</string>
+    <string name="settings_prompt_clear">清除</string>
+    <string name="settings_model_management">模型管理</string>
+    <string name="settings_model_show">显示模型列表</string>
+    <string name="settings_model_hide">收起</string>
+    <string name="settings_model_help">点击卡片即可激活该模型，仅已下载的模型可选。</string>
+    <string name="settings_chat_section">聊天</string>
+    <string name="settings_clear_chats">清空聊天记录</string>
+    <string name="settings_clear_confirm_title">清空全部聊天记录？</string>
+    <string name="settings_clear_confirm_body">此操作不可撤销。</string>
+    <string name="settings_clear_confirm_ok">全部清空</string>
+    <string name="settings_delete_model_title">要删除此模型吗？</string>
+    <string name="settings_delete_model_body">再次使用需要重新下载。</string>
+
+    <string name="common_cancel">取消</string>
+    <string name="common_delete">删除</string>
+
+    <string name="language_subtitle">你的旅行 AI 伙伴</string>
+    <string name="language_select_title">选择语言</string>
+    <string name="language_continue">继续</string>
+
+    <string name="setup_title">选择模型</string>
+    <string name="setup_subtitle">选择用于离线推理的 AI 模型。</string>
+    <string name="setup_start">使用此模型开始</string>
+    <string name="setup_download_first">请先下载模型</string>
+
+    <string name="model_unsupported">不支持的模型</string>
+    <string name="model_blocked_banner">需要 RAM %1$.0f GB 以上 · 此设备不支持</string>
+    <string name="model_warn_banner">在不足 %1$.0f GB 内存的设备上可能运行较慢或不稳定</string>
+    <string name="model_downloaded">下载完成</string>
+    <string name="model_download">下载</string>
+    <string name="model_retry">重试</string>
+    <string name="model_failed_prefix">失败：%1$s</string>
 </resources>

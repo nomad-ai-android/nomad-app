@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -97,7 +98,7 @@ fun LanguageScreen(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "당신의 여행 AI 동반자",
+            text = stringResource(com.nomad.travel.R.string.language_subtitle),
             style = MaterialTheme.typography.bodyLarge.copy(color = NomadMist),
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
@@ -105,7 +106,7 @@ fun LanguageScreen(
         Spacer(Modifier.height(40.dp))
 
         Text(
-            text = "언어 선택 / Language",
+            text = stringResource(com.nomad.travel.R.string.language_select_title),
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
         )
 
@@ -141,7 +142,7 @@ fun LanguageScreen(
             )
         ) {
             Text(
-                text = "계속 / Continue",
+                text = stringResource(com.nomad.travel.R.string.language_continue),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )

@@ -1,5 +1,7 @@
 package com.nomad.travel.ui.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +26,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -38,15 +41,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.nomad.travel.tools.Prompt
+import com.nomad.travel.R
+import com.nomad.travel.llm.ModelEntry
 import com.nomad.travel.ui.setup.ModelCard
 import com.nomad.travel.ui.theme.NomadGlow
 import com.nomad.travel.ui.theme.NomadInputField
@@ -67,6 +73,7 @@ private val LANGS = listOf(
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    onLanguageChanged: () -> Unit = {},
     vm: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -74,6 +81,9 @@ fun SettingsScreen(
     LaunchedEffect(state.systemPrompt) { promptDraft = state.systemPrompt }
 
     var confirmClear by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<ModelEntry?>(null) }
+    var languageExpanded by remember { mutableStateOf(false) }
+    var modelsExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -92,20 +102,51 @@ fun SettingsScreen(
             Spacer(Modifier.height(4.dp))
 
             // ─── Language ─────────────────────────
-            Section("언어") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LANGS.forEach { opt ->
-                        LanguageRow(
-                            option = opt,
-                            selected = state.language == opt.code,
-                            onClick = { vm.setLanguage(opt.code) }
-                        )
+            Section(stringResource(R.string.settings_language)) {
+                val current = LANGS.firstOrNull { it.code == state.language } ?: LANGS[0]
+                CollapsibleRow(
+                    leading = {
+                        Text(current.flag, fontSize = 22.sp)
+                        Spacer(Modifier.size(12.dp))
+                        Column {
+                            Text(
+                                text = stringResource(R.string.settings_language_change),
+                                style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+                            )
+                            Text(
+                                text = current.label,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    },
+                    expanded = languageExpanded,
+                    onToggle = { languageExpanded = !languageExpanded }
+                )
+                AnimatedVisibility(visible = languageExpanded) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 10.dp)
+                    ) {
+                        LANGS.forEach { opt ->
+                            LanguageRow(
+                                option = opt,
+                                selected = state.language == opt.code,
+                                onClick = {
+                                    if (state.language != opt.code) {
+                                        vm.setLanguage(opt.code)
+                                        onLanguageChanged()
+                                    } else {
+                                        languageExpanded = false
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
             }
 
             // ─── System prompt ────────────────────
-            Section("공통 프롬프트") {
+            Section(stringResource(R.string.settings_system_prompt)) {
                 Column {
                     Box(
                         modifier = Modifier
@@ -114,6 +155,16 @@ fun SettingsScreen(
                             .background(NomadInputField)
                             .padding(horizontal = 14.dp, vertical = 12.dp)
                     ) {
+                        if (promptDraft.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.settings_system_prompt_hint),
+                                style = TextStyle(
+                                    color = NomadMuted,
+                                    fontSize = 14.sp,
+                                    lineHeight = 20.sp
+                                )
+                            )
+                        }
                         BasicTextField(
                             value = promptDraft,
                             onValueChange = { promptDraft = it },
@@ -130,41 +181,67 @@ fun SettingsScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        SecondaryButton("기본값 복원") {
-                            promptDraft = Prompt.defaultPersona()
+                        SecondaryButton(stringResource(R.string.settings_prompt_clear)) {
+                            promptDraft = ""
                             vm.resetSystemPrompt()
                         }
-                        PrimaryButton("저장") { vm.setSystemPrompt(promptDraft) }
+                        PrimaryButton(stringResource(R.string.settings_prompt_save)) {
+                            vm.setSystemPrompt(promptDraft)
+                        }
                     }
                 }
             }
 
             // ─── Model ────────────────────────────
-            Section("모델 관리") {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    state.modelRows.forEach { row ->
-                        ModelCard(
-                            row = row,
-                            active = row.entry.id == state.activeModelId && row.downloaded,
-                            onSelect = { vm.selectModel(row.entry) },
-                            onDownload = { vm.startDownload(row.entry) },
-                            onCancel = { vm.cancelDownload(row.entry) },
-                            onDelete = { vm.deleteModel(row.entry) }
+            Section(stringResource(R.string.settings_model_management)) {
+                val activeRow = state.modelRows.firstOrNull { it.entry.id == state.activeModelId }
+                CollapsibleRow(
+                    leading = {
+                        Column {
+                            Text(
+                                text = stringResource(
+                                    if (modelsExpanded) R.string.settings_model_hide
+                                    else R.string.settings_model_show
+                                ),
+                                style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+                            )
+                            Text(
+                                text = activeRow?.entry?.displayName ?: "—",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    },
+                    expanded = modelsExpanded,
+                    onToggle = { modelsExpanded = !modelsExpanded }
+                )
+                AnimatedVisibility(visible = modelsExpanded) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(top = 12.dp)
+                    ) {
+                        state.modelRows.forEach { row ->
+                            ModelCard(
+                                row = row,
+                                active = row.entry.id == state.activeModelId && row.downloaded,
+                                onSelect = { vm.selectModel(row.entry) },
+                                onDownload = { vm.startDownload(row.entry) },
+                                onCancel = { vm.cancelDownload(row.entry) },
+                                onDelete = { pendingDelete = row.entry }
+                            )
+                        }
+                        Text(
+                            text = stringResource(R.string.settings_model_help),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = NomadMuted
                         )
                     }
-                    Text(
-                        text = "카드를 탭하면 해당 모델이 활성화됩니다. " +
-                            "다운로드가 완료된 모델만 선택 가능합니다.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = NomadMuted
-                    )
                 }
             }
 
             // ─── Danger zone ──────────────────────
-            Section("채팅") {
+            Section(stringResource(R.string.settings_chat_section)) {
                 DangerButton(
-                    label = "채팅 내역 모두 지우기",
+                    label = stringResource(R.string.settings_clear_chats),
                     onClick = { confirmClear = true }
                 )
             }
@@ -176,18 +253,55 @@ fun SettingsScreen(
     if (confirmClear) {
         AlertDialog(
             onDismissRequest = { confirmClear = false },
-            title = { Text("채팅 내역을 모두 지울까요?") },
-            text = { Text("복구할 수 없습니다.") },
+            title = { Text(stringResource(R.string.settings_clear_confirm_title)) },
+            text = { Text(stringResource(R.string.settings_clear_confirm_body)) },
             confirmButton = {
                 TextButton(onClick = {
                     vm.clearChats()
                     confirmClear = false
                 }) {
-                    Text("모두 지우기", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.settings_clear_confirm_ok),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmClear = false }) { Text("취소") }
+                TextButton(onClick = { confirmClear = false }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+            containerColor = NomadInputField,
+            titleContentColor = NomadSilver,
+            textContentColor = NomadMist
+        )
+    }
+
+    pendingDelete?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text(stringResource(R.string.settings_delete_model_title)) },
+            text = {
+                Text(
+                    text = entry.displayName + "\n\n" +
+                        stringResource(R.string.settings_delete_model_body)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.deleteModel(entry)
+                    pendingDelete = null
+                }) {
+                    Text(
+                        stringResource(R.string.common_delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
             },
             containerColor = NomadInputField,
             titleContentColor = NomadSilver,
@@ -213,12 +327,16 @@ private fun SettingsTopBar(onBack: () -> Unit) {
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "뒤로",
+                contentDescription = stringResource(R.string.settings_back),
                 tint = NomadSilver
             )
         }
         Spacer(Modifier.size(4.dp))
-        Text("설정", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Text(
+            stringResource(R.string.settings_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
@@ -234,6 +352,38 @@ private fun Section(title: String, content: @Composable () -> Unit) {
             modifier = Modifier.padding(start = 4.dp, bottom = 10.dp)
         )
         content()
+    }
+}
+
+@Composable
+private fun CollapsibleRow(
+    leading: @Composable () -> Unit,
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "chev")
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) { leading() }
+        Icon(
+            Icons.Default.ExpandMore,
+            contentDescription = null,
+            tint = NomadMist,
+            modifier = Modifier
+                .size(22.dp)
+                .rotate(rotation)
+        )
     }
 }
 
