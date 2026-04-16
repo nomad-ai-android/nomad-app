@@ -43,7 +43,8 @@ data class SettingsUiState(
     val modelRows: List<ModelRow> = emptyList(),
     val contextStrategy: ContextStrategy = ContextStrategy.DROP_OLDEST,
     val updateState: UpdateState = UpdateState.Idle,
-    val currentVersion: String = BuildConfig.VERSION_NAME
+    val currentVersion: String = BuildConfig.VERSION_NAME,
+    val autoUpdateCheck: Boolean = true
 )
 
 class SettingsViewModel(
@@ -73,8 +74,9 @@ class SettingsViewModel(
         },
         statusesFlow,
         refreshTick,
-        updateState
-    ) { base, statuses, _, uState ->
+        updateState,
+        prefs.autoUpdateCheck
+    ) { base, statuses, _, uState, autoUpdate ->
         val lang = base[0] as String?
         val prompt = base[1] as String?
         val activeId = base[2] as String?
@@ -94,7 +96,8 @@ class SettingsViewModel(
             activeModelId = activeId ?: ModelCatalog.recommended.id,
             modelRows = rows,
             contextStrategy = ContextStrategy.from(strategy),
-            updateState = uState
+            updateState = uState,
+            autoUpdateCheck = autoUpdate
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
 
@@ -104,6 +107,10 @@ class SettingsViewModel(
 
     fun setSystemPrompt(text: String) {
         viewModelScope.launch { prefs.setSystemPrompt(text) }
+    }
+
+    fun setAutoUpdateCheck(enabled: Boolean) {
+        viewModelScope.launch { prefs.setAutoUpdateCheck(enabled) }
     }
 
     fun resetSystemPrompt() {

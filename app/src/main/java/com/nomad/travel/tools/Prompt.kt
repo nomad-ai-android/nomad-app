@@ -2,6 +2,10 @@ package com.nomad.travel.tools
 
 import com.nomad.travel.data.ChatMessage
 import com.nomad.travel.data.Role
+import java.time.ZoneId
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * Builds a (system instruction, user message) pair for the LiteRT-LM Engine.
@@ -33,11 +37,13 @@ object Prompt {
             "sentence BEFORE the tag describing what you are about to do.\n" +
             "1) EXPENSE — when the user logs a spend, append exactly one tag: " +
             "<EXPENSE amount=\"NUMBER\" currency=\"ISO\" category=\"food|transport|stay|misc\" note=\"SHORT\">.\n" +
-            "2) CURRENCY — whenever the user asks about exchange rates or to convert an amount between " +
-            "currencies, DO NOT guess or compute the rate yourself (your training data is stale). " +
-            "Instead append exactly one tag: <CURRENCY amount=\"NUMBER\" from=\"ISO_CODE\" to=\"ISO_CODE\">. " +
-            "Use 3-letter ISO codes (USD, KRW, JPY, EUR, CNY, ...). Default amount to 1 if the user did not specify. " +
-            "Before the tag, briefly restate what you will convert (e.g. \"100달러를 원화로 환산해드릴게요.\"). " +
+            "2) CURRENCY — ONLY when the user EXPLICITLY asks to convert money or check an exchange rate " +
+            "(e.g. \"100달러 원화로 얼마야?\", \"엔화 환율 알려줘\", \"convert 50 USD to EUR\"). " +
+            "Do NOT emit this tag for expense logging, price mentions, general travel talk, or time questions. " +
+            "DO NOT guess or compute the rate yourself. " +
+            "Append exactly one tag: <CURRENCY amount=\"NUMBER\" from=\"ISO_CODE\" to=\"ISO_CODE\">. " +
+            "Use 3-letter ISO codes (USD, KRW, JPY, EUR, CNY, ...). " +
+            "Before the tag, briefly restate what you will convert. " +
             "Do not output numeric results — the app runs the conversion and shows them separately.\n" +
             "3) ASK — when you genuinely need the user to pick between 2 to 4 mutually exclusive options " +
             "to proceed (and no sensible default exists), append: " +
@@ -72,9 +78,18 @@ object Prompt {
         val lang = langName(uiLanguage)
         val extra = customSystemPrompt?.trim().orEmpty()
 
+        val zone = ZoneId.systemDefault()
+        val now = ZonedDateTime.now(zone)
+        val timeFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd (E) HH:mm", Locale.getDefault())
+        val currentTime = "Current local time: ${now.format(timeFmt)} (${zone.id}). " +
+            "Use this when the user asks about the current time, date, or day of week. " +
+            "You may also calculate other timezone times based on this."
+
         val midConversation = window.history.isNotEmpty() || !window.summary.isNullOrBlank()
         val systemInstruction = buildString {
             append(BASE_PERSONA)
+            append(' ')
+            append(currentTime)
             append(' ')
             append("Always answer in ")
             append(lang)

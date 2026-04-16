@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
+import com.nomad.travel.BuildConfig
 import com.nomad.travel.NomadApp
 import com.nomad.travel.data.ChatMessage
 import com.nomad.travel.data.Role
@@ -15,6 +16,8 @@ import com.nomad.travel.data.chat.ChatSessionEntity
 import com.nomad.travel.tools.CurrencyService
 import com.nomad.travel.tools.ToolRouter
 import com.nomad.travel.tools.ToolTags
+import com.nomad.travel.update.UpdateChecker
+import com.nomad.travel.update.UpdateManager
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
@@ -37,12 +40,20 @@ data class PendingAction(
     val ask: ToolTags.AskCall? = null
 )
 
+sealed interface UpdateBannerState {
+    data object Hidden : UpdateBannerState
+    data class Available(val release: UpdateChecker.LatestRelease) : UpdateBannerState
+    data class Downloading(val progress: Float) : UpdateBannerState
+    data object Installing : UpdateBannerState
+}
+
 data class ChatUiState(
     val sessions: List<ChatSessionEntity> = emptyList(),
     val currentSessionId: Long? = null,
     val messages: List<ChatMessage> = emptyList(),
     val isResponding: Boolean = false,
-    val pending: PendingAction? = null
+    val pending: PendingAction? = null,
+    val updateBanner: UpdateBannerState = UpdateBannerState.Hidden
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -50,7 +61,8 @@ class ChatViewModel(
     private val router: ToolRouter,
     private val repo: ChatRepository,
     private val prefs: UserPrefs,
-    private val currencyService: CurrencyService
+    private val currencyService: CurrencyService,
+    private val updateManager: UpdateManager
 ) : ViewModel() {
 
     private val currentSessionId = MutableStateFlow<Long?>(null)
@@ -58,6 +70,7 @@ class ChatViewModel(
     /** In-memory streaming/pending message layered on top of persisted messages. */
     private val overlay = MutableStateFlow<ChatMessage?>(null)
     private val pending = MutableStateFlow<PendingAction?>(null)
+    private val updateBanner = MutableStateFlow<UpdateBannerState>(UpdateBannerState.Hidden)
     private var streamJob: Job? = null
 
     private val persistedMessages = currentSessionId.flatMapLatest { id ->
@@ -80,8 +93,9 @@ class ChatViewModel(
                 isResponding = busy
             )
         },
-        pending
-    ) { base, p -> base.copy(pending = p) }
+        pending,
+        updateBanner
+    ) { base, p, banner -> base.copy(pending = p, updateBanner = banner) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ChatUiState())
 
     init {
@@ -92,6 +106,16 @@ class ChatViewModel(
                 ?: repo.createSession(DEFAULT_TITLE)
             currentSessionId.value = resolved
             prefs.setLastSessionId(resolved)
+        }
+        // Auto-check for updates on app start
+        viewModelScope.launch {
+            if (!prefs.autoUpdateCheckBlocking()) return@launch
+            val checker = updateManager.checker
+            val release = checker.fetchLatest() ?: return@launch
+            if (!checker.isNewer(release.versionName, BuildConfig.VERSION_NAME)) return@launch
+            val skipped = prefs.skippedVersionBlocking()
+            if (skipped == release.versionName) return@launch
+            updateBanner.value = UpdateBannerState.Available(release)
         }
     }
 
@@ -300,6 +324,40 @@ class ChatViewModel(
         }
     }
 
+    fun startUpdate() {
+        val release = (updateBanner.value as? UpdateBannerState.Available)?.release ?: return
+        val apkUrl = release.apkUrl
+        if (apkUrl.isNullOrBlank()) {
+            updateBanner.value = UpdateBannerState.Hidden
+            return
+        }
+        viewModelScope.launch {
+            updateBanner.value = UpdateBannerState.Downloading(0f)
+            val file = updateManager.downloadApk(apkUrl) { progress ->
+                updateBanner.value = UpdateBannerState.Downloading(progress)
+            }
+            if (file != null) {
+                updateBanner.value = UpdateBannerState.Installing
+                updateManager.installApk(file)
+                updateBanner.value = UpdateBannerState.Hidden
+            } else {
+                updateBanner.value = UpdateBannerState.Hidden
+            }
+        }
+    }
+
+    fun skipUpdate() {
+        val release = (updateBanner.value as? UpdateBannerState.Available)?.release
+        if (release != null) {
+            viewModelScope.launch { prefs.setSkippedVersion(release.versionName) }
+        }
+        updateBanner.value = UpdateBannerState.Hidden
+    }
+
+    fun canInstallUnknownSources(): Boolean = updateManager.canInstallFromUnknownSources()
+
+    fun unknownSourcesIntent() = updateManager.unknownSourcesSettingsIntent()
+
     companion object {
         private const val DEFAULT_TITLE = "New chat"
 
@@ -311,7 +369,8 @@ class ChatViewModel(
                     router = app.container.toolRouter,
                     repo = app.container.chatRepository,
                     prefs = app.container.prefs,
-                    currencyService = app.container.currencyService
+                    currencyService = app.container.currencyService,
+                    updateManager = app.container.updateManager
                 ) as T
             }
         }

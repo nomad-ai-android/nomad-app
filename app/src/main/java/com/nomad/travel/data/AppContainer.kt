@@ -25,6 +25,7 @@ interface AppContainer {
     val chatRepository: ChatRepository
     val device: DeviceCapability
     val updateManager: UpdateManager
+    val updateChecker: UpdateChecker
 }
 
 class DefaultAppContainer(context: Context) : AppContainer {
@@ -37,10 +38,14 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override val downloader: ModelDownloader by lazy { ModelDownloader(appContext) }
     override val currencyService: CurrencyService by lazy { CurrencyService() }
 
+    override val updateChecker: UpdateChecker by lazy {
+        UpdateChecker(com.nomad.travel.BuildConfig.GITHUB_REPO)
+    }
+
     override val updateManager: UpdateManager by lazy {
         UpdateManager(
             context = appContext,
-            checker = UpdateChecker(com.nomad.travel.BuildConfig.GITHUB_REPO)
+            checker = updateChecker
         )
     }
 

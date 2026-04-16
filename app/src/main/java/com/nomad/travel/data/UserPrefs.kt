@@ -1,6 +1,7 @@
 package com.nomad.travel.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -18,8 +19,11 @@ class UserPrefs(private val context: Context) {
     private val KEY_SYSTEM_PROMPT = stringPreferencesKey("system_prompt")
     private val KEY_CONTEXT_STRATEGY = stringPreferencesKey("context_strategy")
     private val KEY_LAST_SESSION_ID = longPreferencesKey("last_session_id")
+    private val KEY_SKIPPED_VERSION = stringPreferencesKey("skipped_version")
+    private val KEY_AUTO_UPDATE_CHECK = booleanPreferencesKey("auto_update_check")
 
     val language: Flow<String?> = context.dataStore.data.map { it[KEY_LANGUAGE] }
+    val autoUpdateCheck: Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTO_UPDATE_CHECK] != false }
     val activeModelId: Flow<String?> = context.dataStore.data.map { it[KEY_ACTIVE_MODEL] }
     val systemPrompt: Flow<String?> = context.dataStore.data.map { it[KEY_SYSTEM_PROMPT] }
     val contextStrategy: Flow<String?> = context.dataStore.data.map { it[KEY_CONTEXT_STRATEGY] }
@@ -49,5 +53,19 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setLastSessionId(id: Long) {
         context.dataStore.edit { it[KEY_LAST_SESSION_ID] = id }
+    }
+
+    suspend fun skippedVersionBlocking(): String? =
+        context.dataStore.data.first()[KEY_SKIPPED_VERSION]
+
+    suspend fun setSkippedVersion(version: String) {
+        context.dataStore.edit { it[KEY_SKIPPED_VERSION] = version }
+    }
+
+    suspend fun autoUpdateCheckBlocking(): Boolean =
+        context.dataStore.data.first()[KEY_AUTO_UPDATE_CHECK] != false
+
+    suspend fun setAutoUpdateCheck(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_AUTO_UPDATE_CHECK] = enabled }
     }
 }

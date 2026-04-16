@@ -51,6 +51,10 @@
     <string name="update_no_apk">No APK found in the release</string>
     <string name="update_allow_unknown">Permission to install from unknown sources is required</string>
     <string name="update_open_settings">Open settings</string>
+    <string name="settings_auto_update_check">Auto update check</string>
+    <string name="update_available_desc">A new update is available</string>
+    <string name="update_action">Update</string>
+    <string name="update_skip">Skip</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_back">Back</string>

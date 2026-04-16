@@ -50,6 +50,7 @@ class ToolRouter(
 
         val baseTag = when {
             ocrBlock != null -> "menu_translate"
+            looksLikeTimeQuery(turn.userText) -> "local_time"
             looksLikeExpense(turn.userText) -> "expense"
             else -> "chat"
         }
@@ -80,13 +81,16 @@ class ToolRouter(
         }
 
         val post = postProcess(lastCumulative)
-        val finalTag = post.toolTag ?: baseTag
+        // When the user asked about time, ignore any spurious tool tags
+        // the model may have hallucinated (e.g. CURRENCY).
+        val suppressTools = baseTag == "local_time"
+        val finalTag = if (suppressTools) baseTag else (post.toolTag ?: baseTag)
         emit(
             StreamEvent.Complete(
                 text = post.visibleText.ifBlank { ToolTags.stripAll(lastCumulative) },
                 toolTag = finalTag,
-                currency = post.currency,
-                ask = post.ask
+                currency = if (suppressTools) null else post.currency,
+                ask = if (suppressTools) null else post.ask
             )
         )
     }
@@ -171,6 +175,11 @@ class ToolRouter(
         )
     }
 
+    private fun looksLikeTimeQuery(text: String): Boolean {
+        val lower = text.lowercase()
+        return TIME_HINTS.any { lower.contains(it) }
+    }
+
     private fun looksLikeExpense(text: String): Boolean {
         val lower = text.lowercase()
         return EXPENSE_HINTS.any { lower.contains(it) }
@@ -178,6 +187,14 @@ class ToolRouter(
 
     companion object {
         private val EXPENSE_TAG = Regex("<EXPENSE[^>]*>")
+        private val TIME_HINTS = listOf(
+            "몇 시", "몇시", "현재 시간", "지금 시간", "현지 시간", "현지시간",
+            "무슨 요일", "오늘 날짜", "몇 월", "몇월",
+            "what time", "current time", "local time", "what day",
+            "what date", "today's date",
+            "几点", "现在时间", "什么时候", "今天几号", "星期几",
+            "何時", "今何時", "今日は何曜日", "何月何日"
+        )
         private val EXPENSE_HINTS = listOf(
             "지출", "썼어", "결제", "샀어",
             "spent", "paid", "bought", "expense",

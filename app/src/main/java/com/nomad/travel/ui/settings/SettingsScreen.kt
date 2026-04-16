@@ -33,6 +33,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -268,6 +270,29 @@ fun SettingsScreen(
 
             // ─── App version & update ────────────
             Section(stringResource(R.string.settings_app_version)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.settings_auto_update_check),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = NomadSilver
+                    )
+                    Switch(
+                        checked = state.autoUpdateCheck,
+                        onCheckedChange = { vm.setAutoUpdateCheck(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = NomadGlow,
+                            checkedTrackColor = NomadRoyal,
+                            uncheckedThumbColor = NomadMuted,
+                            uncheckedTrackColor = NomadMuted.copy(alpha = 0.3f)
+                        )
+                    )
+                }
                 UpdateSection(
                     state = state.updateState,
                     currentVersion = state.currentVersion,

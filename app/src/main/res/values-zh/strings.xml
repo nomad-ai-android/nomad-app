@@ -51,6 +51,10 @@
     <string name="update_no_apk">发布中没有 APK 文件</string>
     <string name="update_allow_unknown">需要允许安装来自未知来源的应用</string>
     <string name="update_open_settings">打开设置</string>
+    <string name="settings_auto_update_check">自动检查更新</string>
+    <string name="update_available_desc">有新的更新可用</string>
+    <string name="update_action">更新</string>
+    <string name="update_skip">跳过</string>
 
     <string name="settings_title">设置</string>
     <string name="settings_back">返回</string>

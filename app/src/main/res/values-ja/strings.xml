@@ -51,6 +51,10 @@
     <string name="update_no_apk">リリースに APK がありません</string>
     <string name="update_allow_unknown">不明なソースからのインストール許可が必要です</string>
     <string name="update_open_settings">設定を開く</string>
+    <string name="settings_auto_update_check">自動アップデート確認</string>
+    <string name="update_available_desc">新しいアップデートがあります</string>
+    <string name="update_action">更新</string>
+    <string name="update_skip">スキップ</string>
 
     <string name="settings_title">設定</string>
     <string name="settings_back">戻る</string>

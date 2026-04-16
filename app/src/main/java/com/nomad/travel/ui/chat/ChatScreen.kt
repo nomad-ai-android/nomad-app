@@ -8,6 +8,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -31,6 +34,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -48,6 +53,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PhotoCamera
@@ -56,6 +62,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
@@ -78,7 +85,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -190,6 +199,8 @@ fun ChatScreen(
             onResolveCurrency = { live -> vm.resolveCurrency(live) },
             onResolveAsk = { option -> vm.resolveAsk(context, option) },
             onDismissPending = { vm.dismissPending() },
+            onStartUpdate = { vm.startUpdate() },
+            onSkipUpdate = { vm.skipUpdate() },
             onCamera = {
                 val granted = context.checkSelfPermission(Manifest.permission.CAMERA) ==
                     PackageManager.PERMISSION_GRANTED
@@ -254,7 +265,9 @@ private fun ChatScreenBody(
     onOpenMenuView: (Uri, String) -> Unit,
     onResolveCurrency: (Boolean) -> Unit,
     onResolveAsk: (String) -> Unit,
-    onDismissPending: () -> Unit
+    onDismissPending: () -> Unit,
+    onStartUpdate: () -> Unit = {},
+    onSkipUpdate: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -312,31 +325,96 @@ private fun ChatScreenBody(
             listState.animateScrollToItem(lastIdx, Int.MAX_VALUE / 2)
         }
 
-        if (state.messages.isEmpty()) {
-            EmptyState(modifier = Modifier.weight(1f))
-        } else {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                itemsIndexed(
-                    items = state.messages,
-                    key = { _, m -> m.id }
-                ) { index, msg ->
-                    val priorImageUri = state.messages
-                        .getOrNull(index - 1)
-                        ?.takeIf { it.role == Role.USER }
-                        ?.imageUri
-                    MessageRow(
-                        msg = msg,
-                        menuImageUri = priorImageUri,
-                        onOpenMenuView = onOpenMenuView
-                    )
+        // When the keyboard appears while auto-scroll is active,
+        // scroll to bottom so the latest message stays visible.
+        val density = LocalDensity.current
+        val imeBottom = WindowInsets.ime.getBottom(density)
+        LaunchedEffect(imeBottom) {
+            if (imeBottom > 0 && autoScroll && state.messages.isNotEmpty()) {
+                val lastIdx = state.messages.lastIndex
+                listState.scrollToItem(lastIdx, Int.MAX_VALUE / 2)
+            }
+        }
+
+        // Track which message IDs were already on screen so we only animate truly new ones.
+        // Re-seeded when the session changes (first message ID changes).
+        val sessionKey = state.messages.firstOrNull()?.id
+        val renderedIds = remember(sessionKey) {
+            mutableSetOf<String>().apply { state.messages.forEach { add(it.id) } }
+        }
+
+        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            if (state.messages.isEmpty()) {
+                EmptyState(modifier = Modifier.matchParentSize())
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    itemsIndexed(
+                        items = state.messages,
+                        key = { _, m -> m.id }
+                    ) { index, msg ->
+                        val priorImageUri = state.messages
+                            .getOrNull(index - 1)
+                            ?.takeIf { it.role == Role.USER }
+                            ?.imageUri
+
+                        val isNew = remember(msg.id) {
+                            val new = msg.id !in renderedIds
+                            renderedIds.add(msg.id)
+                            new
+                        }
+                        val shouldAnimate = isNew && (msg.role == Role.USER || msg.pending)
+
+                        val animProgress = remember(msg.id) {
+                            Animatable(if (shouldAnimate) 0f else 1f)
+                        }
+                        if (shouldAnimate) {
+                            val animDelay = if (msg.role == Role.ASSISTANT) 400 else 0
+                            LaunchedEffect(msg.id) {
+                                animProgress.animateTo(
+                                    targetValue = 1f,
+                                    animationSpec = tween(
+                                        durationMillis = 350,
+                                        delayMillis = animDelay,
+                                        easing = FastOutSlowInEasing
+                                    )
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = Modifier.graphicsLayer {
+                                alpha = animProgress.value
+                                translationY = (1f - animProgress.value) * 40f
+                            }
+                        ) {
+                            MessageRow(
+                                msg = msg,
+                                menuImageUri = priorImageUri,
+                                onOpenMenuView = onOpenMenuView
+                            )
+                        }
+                    }
                 }
+            }
+
+            // Floating update card
+            androidx.compose.animation.AnimatedVisibility(
+                visible = state.updateBanner !is UpdateBannerState.Hidden,
+                enter = fadeIn(tween(300)) + expandVertically(tween(300)),
+                exit = fadeOut(tween(200)) + shrinkVertically(tween(200)),
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                UpdateFloatingCard(
+                    bannerState = state.updateBanner,
+                    onUpdate = onStartUpdate,
+                    onSkip = onSkipUpdate
+                )
             }
         }
 
@@ -1233,6 +1311,122 @@ private fun ChoiceButton(
                 fontWeight = FontWeight.SemiBold
             )
         )
+    }
+}
+
+@Composable
+private fun UpdateFloatingCard(
+    bannerState: UpdateBannerState,
+    onUpdate: () -> Unit,
+    onSkip: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(NomadAssistantBubble.copy(alpha = 0.97f))
+            .padding(14.dp)
+    ) {
+        when (bannerState) {
+            is UpdateBannerState.Available -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Download,
+                        contentDescription = null,
+                        tint = NomadGlow,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(
+                                R.string.update_available_title,
+                                bannerState.release.versionName
+                            ),
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = NomadSilver,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                        Text(
+                            text = stringResource(R.string.update_available_desc),
+                            style = MaterialTheme.typography.bodySmall.copy(color = NomadMist)
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.update_action),
+                        color = NomadGlow,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(NomadGlow.copy(alpha = 0.12f))
+                            .clickable(onClick = onUpdate)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    )
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = stringResource(R.string.update_skip),
+                        tint = NomadMuted,
+                        modifier = Modifier
+                            .size(18.dp)
+                            .clickable(onClick = onSkip)
+                    )
+                }
+            }
+            is UpdateBannerState.Downloading -> {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Download,
+                            contentDescription = null,
+                            tint = NomadGlow,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.update_downloading,
+                                (bannerState.progress * 100).toInt()
+                            ),
+                            style = MaterialTheme.typography.bodyMedium.copy(color = NomadSilver)
+                        )
+                    }
+                    LinearProgressIndicator(
+                        progress = { bannerState.progress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp)),
+                        color = NomadGlow,
+                        trackColor = NomadMuted.copy(alpha = 0.3f)
+                    )
+                }
+            }
+            is UpdateBannerState.Installing -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Download,
+                        contentDescription = null,
+                        tint = NomadGlow,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.update_install_now),
+                        style = MaterialTheme.typography.bodyMedium.copy(color = NomadSilver)
+                    )
+                }
+            }
+            else -> {}
+        }
     }
 }
 

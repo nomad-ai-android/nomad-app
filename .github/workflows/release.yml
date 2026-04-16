@@ -74,8 +74,28 @@ jobs:
           APK=$(find app/build/outputs/apk/release -name '*.apk' | head -n1)
           cp "$APK" "nomad-${{ steps.ver.outputs.version }}.apk"
 
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Find the previous tag (the one before the current tag)
+          PREV_TAG=$(git tag --sort=-creatordate | grep '^v' | sed -n '2p')
+          if [ -z "$PREV_TAG" ]; then
+            # First release — list all commits
+            LOGS=$(git log --pretty=format:'- %s' --reverse)
+          else
+            LOGS=$(git log "${PREV_TAG}..HEAD" --pretty=format:'- %s' --reverse)
+          fi
+          # Write to file to preserve newlines
+          {
+            echo "## Changes"
+            echo ""
+            echo "$LOGS"
+            echo ""
+            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG:-$(git rev-list --max-parents=0 HEAD | head -1)}...${{ github.ref_name }}"
+          } > release_notes.md
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: nomad-${{ steps.ver.outputs.version }}.apk
-          generate_release_notes: true
+          body_path: release_notes.md

@@ -38,5 +38,4 @@ app/src/main/assets/*.tflite
 
 # ─── Reference / design source assets in project root ─────
 # (launcher icon and in-app avatars are copied into app/src/main/res/)
-/*.png
 !/.reference-placeholder
