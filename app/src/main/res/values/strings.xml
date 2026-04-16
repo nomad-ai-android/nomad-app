@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">노마드</string>
+    <string name="app_name">NOMAD AI</string>
     <string name="chat_hint">메뉴판 촬영, 여행지 검색, 지출 관리까지 — 무엇이든 물어보세요</string>
     <string name="send">보내기</string>
     <string name="camera">카메라</string>
@@ -27,6 +27,8 @@
     <string name="tool_label_menu_search">· 메뉴 검색</string>
     <string name="tool_label_expense">· 지출 기록됨</string>
     <string name="tool_label_travel">· 여행 정보</string>
+    <string name="tool_label_chat">· 대화</string>
+    <string name="tool_label_cancelled">· 취소됨</string>
 
     <string name="settings_title">설정</string>
     <string name="settings_back">뒤로</string>
@@ -67,4 +69,20 @@
     <string name="model_download">다운로드</string>
     <string name="model_retry">다시 시도</string>
     <string name="model_failed_prefix">실패: %1$s</string>
+
+    <string name="chat_sessions_title">대화 목록</string>
+    <string name="chat_new_session">새 대화</string>
+    <string name="chat_session_menu">대화 목록 열기</string>
+    <string name="chat_session_delete">대화 삭제</string>
+    <string name="chat_session_delete_title">이 대화를 삭제할까요?</string>
+    <string name="chat_session_delete_body">삭제한 대화 내역은 복구할 수 없습니다.</string>
+    <string name="chat_session_default_title">새 대화</string>
+
+    <string name="settings_context_title">대화 컨텍스트</string>
+    <string name="settings_context_drop_oldest">오래된 대화부터 지우기</string>
+    <string name="settings_context_drop_oldest_body">한도를 초과하면 가장 오래된 턴부터 자동으로 제거합니다. (권장)</string>
+    <string name="settings_context_reset">새로 시작하기</string>
+    <string name="settings_context_reset_body">한도를 초과하면 이전 컨텍스트를 모두 비우고 현재 질문만 사용합니다.</string>
+    <string name="settings_context_compact">요약해서 보존</string>
+    <string name="settings_context_compact_body">오래된 대화를 짧게 요약해 유지합니다. 추가 연산이 필요합니다.</string>
 </resources>

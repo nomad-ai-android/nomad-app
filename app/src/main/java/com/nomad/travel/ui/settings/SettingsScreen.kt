@@ -53,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nomad.travel.R
 import com.nomad.travel.llm.ModelEntry
+import com.nomad.travel.tools.ContextStrategy
 import com.nomad.travel.ui.setup.ModelCard
 import com.nomad.travel.ui.theme.NomadGlow
 import com.nomad.travel.ui.theme.NomadInputField
@@ -73,7 +74,6 @@ private val LANGS = listOf(
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
-    onLanguageChanged: () -> Unit = {},
     vm: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -134,9 +134,6 @@ fun SettingsScreen(
                                 onClick = {
                                     if (state.language != opt.code) {
                                         vm.setLanguage(opt.code)
-                                        onLanguageChanged()
-                                    } else {
-                                        languageExpanded = false
                                     }
                                 }
                             )
@@ -189,6 +186,30 @@ fun SettingsScreen(
                             vm.setSystemPrompt(promptDraft)
                         }
                     }
+                }
+            }
+
+            // ─── Context strategy ─────────────────
+            Section(stringResource(R.string.settings_context_title)) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ContextStrategyRow(
+                        title = stringResource(R.string.settings_context_drop_oldest),
+                        body = stringResource(R.string.settings_context_drop_oldest_body),
+                        selected = state.contextStrategy == ContextStrategy.DROP_OLDEST,
+                        onClick = { vm.setContextStrategy(ContextStrategy.DROP_OLDEST) }
+                    )
+                    ContextStrategyRow(
+                        title = stringResource(R.string.settings_context_reset),
+                        body = stringResource(R.string.settings_context_reset_body),
+                        selected = state.contextStrategy == ContextStrategy.RESET,
+                        onClick = { vm.setContextStrategy(ContextStrategy.RESET) }
+                    )
+                    ContextStrategyRow(
+                        title = stringResource(R.string.settings_context_compact),
+                        body = stringResource(R.string.settings_context_compact_body),
+                        selected = state.contextStrategy == ContextStrategy.COMPACT,
+                        onClick = { vm.setContextStrategy(ContextStrategy.COMPACT) }
+                    )
                 }
             }
 
@@ -384,6 +405,44 @@ private fun CollapsibleRow(
                 .size(22.dp)
                 .rotate(rotation)
         )
+    }
+}
+
+@Composable
+private fun ContextStrategyRow(
+    title: String,
+    body: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val border = if (selected) NomadGlow else Color.White.copy(alpha = 0.08f)
+    val bg = if (selected) NomadRoyal.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.04f)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(bg)
+            .border(1.5.dp, border, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.size(4.dp))
+            Text(
+                text = body,
+                style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+            )
+        }
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(NomadGlow)
+            )
+        }
     }
 }
 

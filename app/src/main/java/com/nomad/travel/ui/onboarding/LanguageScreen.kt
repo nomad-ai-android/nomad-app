@@ -83,7 +83,7 @@ fun LanguageScreen(
                 .align(Alignment.CenterHorizontally)
         ) {
             Image(
-                painter = painterResource(R.mipmap.ic_launcher),
+                painter = painterResource(R.drawable.ic_launcher_logo),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize()
             )
@@ -92,7 +92,7 @@ fun LanguageScreen(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "Nomad",
+            text = "NOMAD AI",
             style = MaterialTheme.typography.displayLarge,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )

@@ -1,6 +1,8 @@
 package com.nomad.travel.data
 
 import android.content.Context
+import com.nomad.travel.data.chat.ChatDatabase
+import com.nomad.travel.data.chat.ChatRepository
 import com.nomad.travel.data.expense.ExpenseDatabase
 import com.nomad.travel.data.expense.ExpenseRepository
 import com.nomad.travel.llm.DeviceCapability
@@ -16,7 +18,7 @@ interface AppContainer {
     val toolRouter: ToolRouter
     val prefs: UserPrefs
     val downloader: ModelDownloader
-    val chatHistory: ChatHistory
+    val chatRepository: ChatRepository
     val device: DeviceCapability
 }
 
@@ -28,7 +30,11 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override val gemma: GemmaEngine by lazy { GemmaEngine(appContext, prefs, device) }
     override val ocr: OcrService by lazy { OcrService() }
     override val downloader: ModelDownloader by lazy { ModelDownloader(appContext) }
-    override val chatHistory: ChatHistory by lazy { ChatHistory() }
+
+    override val chatRepository: ChatRepository by lazy {
+        val db = ChatDatabase.get(appContext)
+        ChatRepository(db.sessionDao(), db.messageDao())
+    }
 
     override val expenses: ExpenseRepository by lazy {
         ExpenseRepository(ExpenseDatabase.get(appContext).expenseDao())

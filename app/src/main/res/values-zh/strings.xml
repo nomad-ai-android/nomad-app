@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">游牧</string>
+    <string name="app_name">NOMAD AI</string>
     <string name="chat_hint">拍菜单、找景点、记账单 — 随时问我</string>
     <string name="send">发送</string>
     <string name="camera">相机</string>
@@ -27,6 +27,8 @@
     <string name="tool_label_menu_search">· 菜单搜索</string>
     <string name="tool_label_expense">· 已记账</string>
     <string name="tool_label_travel">· 旅行信息</string>
+    <string name="tool_label_chat">· 对话</string>
+    <string name="tool_label_cancelled">· 已取消</string>
 
     <string name="settings_title">设置</string>
     <string name="settings_back">返回</string>
@@ -67,4 +69,20 @@
     <string name="model_download">下载</string>
     <string name="model_retry">重试</string>
     <string name="model_failed_prefix">失败：%1$s</string>
+
+    <string name="chat_sessions_title">聊天列表</string>
+    <string name="chat_new_session">新建聊天</string>
+    <string name="chat_session_menu">打开聊天列表</string>
+    <string name="chat_session_delete">删除聊天</string>
+    <string name="chat_session_delete_title">要删除此聊天吗？</string>
+    <string name="chat_session_delete_body">已删除的聊天记录无法恢复。</string>
+    <string name="chat_session_default_title">新建聊天</string>
+
+    <string name="settings_context_title">对话上下文</string>
+    <string name="settings_context_drop_oldest">移除最早的对话</string>
+    <string name="settings_context_drop_oldest_body">超过限制时，自动移除最早的对话。（推荐）</string>
+    <string name="settings_context_reset">重置上下文</string>
+    <string name="settings_context_reset_body">超过限制时，清空所有先前上下文，仅保留当前问题。</string>
+    <string name="settings_context_compact">压缩摘要</string>
+    <string name="settings_context_compact_body">将较早的对话压缩为简短摘要。需要额外计算。</string>
 </resources>

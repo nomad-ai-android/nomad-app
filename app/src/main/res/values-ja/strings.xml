@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">ノマド</string>
+    <string name="app_name">NOMAD AI</string>
     <string name="chat_hint">メニューを撮影、観光地を検索、支出を管理 — 何でも聞いてください</string>
     <string name="send">送信</string>
     <string name="camera">カメラ</string>
@@ -27,6 +27,8 @@
     <string name="tool_label_menu_search">· メニュー検索</string>
     <string name="tool_label_expense">· 支出を記録</string>
     <string name="tool_label_travel">· 旅行情報</string>
+    <string name="tool_label_chat">· 会話</string>
+    <string name="tool_label_cancelled">· キャンセル</string>
 
     <string name="settings_title">設定</string>
     <string name="settings_back">戻る</string>
@@ -67,4 +69,20 @@
     <string name="model_download">ダウンロード</string>
     <string name="model_retry">再試行</string>
     <string name="model_failed_prefix">失敗: %1$s</string>
+
+    <string name="chat_sessions_title">チャット一覧</string>
+    <string name="chat_new_session">新しいチャット</string>
+    <string name="chat_session_menu">チャット一覧を開く</string>
+    <string name="chat_session_delete">チャットを削除</string>
+    <string name="chat_session_delete_title">このチャットを削除しますか？</string>
+    <string name="chat_session_delete_body">削除したチャット履歴は復元できません。</string>
+    <string name="chat_session_default_title">新しいチャット</string>
+
+    <string name="settings_context_title">会話コンテキスト</string>
+    <string name="settings_context_drop_oldest">古い会話から削除</string>
+    <string name="settings_context_drop_oldest_body">上限を超えると古い会話から自動的に削除します。（推奨）</string>
+    <string name="settings_context_reset">リセット</string>
+    <string name="settings_context_reset_body">上限を超えると以前のコンテキストをすべてクリアし、現在のメッセージのみ使用します。</string>
+    <string name="settings_context_compact">要約して保持</string>
+    <string name="settings_context_compact_body">古い会話を短い要約に圧縮します。追加の計算が必要です。</string>
 </resources>

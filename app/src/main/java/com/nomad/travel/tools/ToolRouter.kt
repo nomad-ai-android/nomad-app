@@ -2,6 +2,7 @@ package com.nomad.travel.tools
 
 import android.content.Context
 import android.net.Uri
+import com.nomad.travel.data.ChatMessage
 import com.nomad.travel.data.UserPrefs
 import com.nomad.travel.data.expense.Expense
 import com.nomad.travel.data.expense.ExpenseRepository
@@ -20,7 +21,9 @@ class ToolRouter(
     data class Turn(
         val userText: String,
         val imageUri: Uri? = null,
-        val uiLanguage: String = "ko"
+        val uiLanguage: String = "ko",
+        /** Persisted prior messages for the current session, chronological. */
+        val history: List<ChatMessage> = emptyList()
     )
 
     data class Reply(
@@ -31,42 +34,6 @@ class ToolRouter(
     sealed interface StreamEvent {
         data class Delta(val text: String) : StreamEvent
         data class Complete(val text: String, val toolTag: String?) : StreamEvent
-    }
-
-    suspend fun handle(context: Context, turn: Turn): Reply {
-        if (!gemma.ensureLoaded()) {
-            return Reply(visibleText = FALLBACK_NO_MODEL, toolTag = "error")
-        }
-
-        val ocrBlock: String? = turn.imageUri?.let { uri ->
-            runCatching { ocr.recognize(context, uri) }
-                .getOrNull()
-                ?.takeIf { it.isNotBlank() }
-        }
-
-        val tag = when {
-            ocrBlock != null -> "menu_translate"
-            looksLikeExpense(turn.userText) -> "expense"
-            looksLikeMenuSearch(turn.userText) -> "menu_search"
-            else -> "travel"
-        }
-
-        val customPrompt = prefs.systemPromptBlocking()?.takeIf { it.isNotBlank() }
-
-        val built = Prompt.build(
-            uiLanguage = turn.uiLanguage,
-            userText = turn.userText,
-            ocrBlock = ocrBlock,
-            customSystemPrompt = customPrompt
-        )
-
-        val raw = gemma.generate(
-            systemInstruction = built.systemInstruction,
-            userMessage = built.userMessage
-        )
-
-        val (visible, executed) = postProcess(raw)
-        return Reply(visibleText = visible.ifBlank { raw }, toolTag = executed ?: tag)
     }
 
     fun handleStream(context: Context, turn: Turn): Flow<StreamEvent> = flow {
@@ -84,16 +51,26 @@ class ToolRouter(
         val baseTag = when {
             ocrBlock != null -> "menu_translate"
             looksLikeExpense(turn.userText) -> "expense"
-            looksLikeMenuSearch(turn.userText) -> "menu_search"
-            else -> "travel"
+            else -> "chat"
         }
 
         val customPrompt = prefs.systemPromptBlocking()?.takeIf { it.isNotBlank() }
+        val strategy = ContextStrategy.from(prefs.contextStrategyBlocking())
+
+        val window = Prompt.buildWindow(
+            strategy = strategy,
+            history = turn.history,
+            pendingInputText = turn.userText,
+            ocrBlock = ocrBlock,
+            summarize = { dropped -> summarize(dropped) }
+        )
+
         val built = Prompt.build(
             uiLanguage = turn.uiLanguage,
             userText = turn.userText,
             ocrBlock = ocrBlock,
-            customSystemPrompt = customPrompt
+            customSystemPrompt = customPrompt,
+            window = window
         )
 
         var lastCumulative = ""
@@ -110,6 +87,43 @@ class ToolRouter(
                 toolTag = executed ?: baseTag
             )
         )
+    }
+
+    suspend fun generateTitle(firstUserText: String): String {
+        val trimmed = firstUserText.trim()
+        if (trimmed.isEmpty()) return ""
+        if (!gemma.ensureLoaded()) return ""
+        return runCatching {
+            gemma.generate(
+                systemInstruction = "You generate chat titles. Read the user's first message and " +
+                    "output a single short title (max 6 words) that captures its topic. " +
+                    "Reply in the same language as the message. " +
+                    "No quotes, no trailing punctuation, no preamble, no markdown.",
+                userMessage = trimmed
+            )
+                .lineSequence()
+                .map { it.trim() }
+                .firstOrNull { it.isNotEmpty() }
+                .orEmpty()
+                .trim('"', '\'', ' ', '.', '。', '!', '?', '·', '-')
+                .take(40)
+        }.getOrDefault("")
+    }
+
+    private suspend fun summarize(messages: List<com.nomad.travel.data.ChatMessage>): String {
+        if (messages.isEmpty()) return ""
+        val transcript = messages.joinToString("\n") { m ->
+            val who = if (m.role == com.nomad.travel.data.Role.USER) "User" else "Assistant"
+            "$who: ${m.text.trim()}"
+        }
+        return runCatching {
+            gemma.generate(
+                systemInstruction = "You compress conversations. Output a compact 2-5 sentence " +
+                    "summary that preserves user intents, names, places, dates, and decisions. " +
+                    "No preamble, no markdown, no bullets.",
+                userMessage = transcript
+            ).trim()
+        }.getOrDefault("")
     }
 
     private suspend fun postProcess(raw: String): Pair<String, String?> {

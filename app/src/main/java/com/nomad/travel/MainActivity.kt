@@ -5,6 +5,8 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedContent
@@ -12,12 +14,15 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nomad.travel.ui.chat.ChatScreen
 import com.nomad.travel.ui.onboarding.LanguageScreen
 import com.nomad.travel.ui.settings.SettingsScreen
@@ -60,45 +65,63 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             NomadTheme {
-                var destination by remember { mutableStateOf(initial) }
-                val scope = rememberCoroutineScope()
-
-                BackHandler(enabled = destination == Destination.SETTINGS) {
-                    destination = Destination.CHAT
+                val langPref by prefs.language.collectAsStateWithLifecycle(initialValue = null)
+                val activityContext = LocalContext.current
+                val activity = this@MainActivity
+                val effectiveLanguage = langPref ?: "ko"
+                val localizedContext = remember(effectiveLanguage) {
+                    val locale = Locale(effectiveLanguage)
+                    Locale.setDefault(locale)
+                    val cfg = Configuration(activityContext.resources.configuration)
+                    cfg.setLocale(locale)
+                    activityContext.createConfigurationContext(cfg)
                 }
 
-                AnimatedContent(
-                    targetState = destination,
-                    transitionSpec = {
-                        fadeIn(tween(220)) togetherWith fadeOut(tween(180))
-                    },
-                    label = "nav"
-                ) { dest ->
-                    when (dest) {
-                        Destination.LANGUAGE -> LanguageScreen(
-                            onContinue = { code ->
-                                scope.launch {
-                                    prefs.setLanguage(code)
-                                    recreate()
-                                }
-                            }
-                        )
-                        Destination.SETUP -> ModelSetupScreen(
-                            onReady = { destination = Destination.CHAT }
-                        )
-                        Destination.CHAT -> ChatScreen(
-                            onOpenSettings = { destination = Destination.SETTINGS }
-                        )
-                        Destination.SETTINGS -> SettingsScreen(
-                            onBack = { destination = Destination.CHAT },
-                            onLanguageChanged = { recreate() }
-                        )
+                CompositionLocalProvider(
+                    LocalContext provides localizedContext,
+                    LocalActivityResultRegistryOwner provides activity,
+                    LocalOnBackPressedDispatcherOwner provides activity
+                ) {
+                    var destination by remember { mutableStateOf(initial) }
+                    val scope = rememberCoroutineScope()
+
+                    BackHandler(enabled = destination == Destination.SETTINGS) {
+                        destination = Destination.CHAT
                     }
-                }
 
-                LaunchedEffect(destination) {
-                    if (destination == Destination.CHAT && !gemma.isActiveReady()) {
-                        destination = Destination.SETUP
+                    AnimatedContent(
+                        targetState = destination,
+                        transitionSpec = {
+                            fadeIn(tween(220)) togetherWith fadeOut(tween(180))
+                        },
+                        label = "nav"
+                    ) { dest ->
+                        when (dest) {
+                            Destination.LANGUAGE -> LanguageScreen(
+                                onContinue = { code ->
+                                    scope.launch {
+                                        prefs.setLanguage(code)
+                                        destination = if (gemma.isActiveReady())
+                                            Destination.CHAT else Destination.SETUP
+                                    }
+                                }
+                            )
+                            Destination.SETUP -> ModelSetupScreen(
+                                onReady = { destination = Destination.CHAT }
+                            )
+                            Destination.CHAT -> ChatScreen(
+                                onOpenSettings = { destination = Destination.SETTINGS }
+                            )
+                            Destination.SETTINGS -> SettingsScreen(
+                                onBack = { destination = Destination.CHAT }
+                            )
+                        }
+                    }
+
+                    LaunchedEffect(destination) {
+                        if (destination == Destination.CHAT && !gemma.isActiveReady()) {
+                            destination = Destination.SETUP
+                        }
                     }
                 }
             }

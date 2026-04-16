@@ -20,6 +20,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,19 +44,32 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,9 +79,15 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -76,8 +96,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nomad.travel.R
 import com.nomad.travel.data.ChatMessage
-import kotlinx.coroutines.delay
 import com.nomad.travel.data.Role
+import com.nomad.travel.data.chat.ChatSessionEntity
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.nomad.travel.ui.theme.NomadAssistantBubble
 import com.nomad.travel.ui.theme.NomadGlow
 import com.nomad.travel.ui.theme.NomadInputField
@@ -117,18 +139,157 @@ fun ChatScreen(
         }
     }
 
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+    var pendingDeleteSessionId by remember { mutableStateOf<Long?>(null) }
+    var sendTick by remember { mutableStateOf(0) }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerContainerColor = NomadInputField,
+                drawerContentColor = NomadSilver
+            ) {
+                SessionDrawerContent(
+                    sessions = state.sessions,
+                    currentId = state.currentSessionId,
+                    onNewChat = {
+                        vm.newSession()
+                        scope.launch { drawerState.close() }
+                    },
+                    onSelect = { id ->
+                        vm.switchSession(id)
+                        scope.launch { drawerState.close() }
+                    },
+                    onDelete = { id -> pendingDeleteSessionId = id }
+                )
+            }
+        }
+    ) {
+        ChatScreenBody(
+            state = state,
+            sendTick = sendTick,
+            input = input,
+            onInputChange = { input = it },
+            pendingImage = pendingImage,
+            onClearPendingImage = { pendingImage = null },
+            onOpenSettings = onOpenSettings,
+            onOpenDrawer = { scope.launch { drawerState.open() } },
+            onSend = {
+                vm.send(context, input, pendingImage)
+                input = ""
+                pendingImage = null
+                sendTick++
+            },
+            onCancel = { vm.cancelResponse() },
+            onCamera = {
+                val granted = context.checkSelfPermission(Manifest.permission.CAMERA) ==
+                    PackageManager.PERMISSION_GRANTED
+                if (granted) {
+                    val uri = createTempImageUri(context)
+                    cameraUri.value = uri
+                    cameraLauncher.launch(uri)
+                } else {
+                    permissionLauncher.launch(Manifest.permission.CAMERA)
+                }
+            },
+            onGallery = {
+                galleryLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            }
+        )
+    }
+
+    pendingDeleteSessionId?.let { id ->
+        AlertDialog(
+            onDismissRequest = { pendingDeleteSessionId = null },
+            title = { Text(stringResource(R.string.chat_session_delete_title)) },
+            text = { Text(stringResource(R.string.chat_session_delete_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.deleteSession(id)
+                    pendingDeleteSessionId = null
+                }) {
+                    Text(
+                        stringResource(R.string.common_delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDeleteSessionId = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+            containerColor = NomadInputField,
+            titleContentColor = NomadSilver,
+            textContentColor = NomadMist
+        )
+    }
+}
+
+@Composable
+private fun ChatScreenBody(
+    state: ChatUiState,
+    sendTick: Int,
+    input: String,
+    onInputChange: (String) -> Unit,
+    pendingImage: Uri?,
+    onClearPendingImage: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenDrawer: () -> Unit,
+    onSend: () -> Unit,
+    onCancel: () -> Unit,
+    onCamera: () -> Unit,
+    onGallery: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
             .imePadding()
     ) {
-        ChatTopBar(onOpenSettings = onOpenSettings)
+        ChatTopBar(onOpenDrawer = onOpenDrawer, onOpenSettings = onOpenSettings)
 
         val listState = rememberLazyListState()
-        LaunchedEffect(state.messages.size) {
+        var autoScroll by remember { mutableStateOf(true) }
+
+        // Release auto-scroll when the user drags away from the bottom,
+        // re-enable it when they scroll back to the bottom.
+        LaunchedEffect(listState) {
+            snapshotFlow { listState.isScrollInProgress }
+                .collect { scrolling ->
+                    if (!scrolling) {
+                        autoScroll = !listState.canScrollForward
+                    }
+                }
+        }
+
+        val lastMessageId = state.messages.lastOrNull()?.id
+        val lastMessageLength = state.messages.lastOrNull()?.text?.length ?: 0
+        LaunchedEffect(lastMessageId, lastMessageLength) {
+            if (!autoScroll || state.messages.isEmpty()) return@LaunchedEffect
+            val lastIdx = state.messages.lastIndex
+            val info = listState.layoutInfo
+            val lastVisible = info.visibleItemsInfo.lastOrNull()
+            if (lastVisible == null || lastVisible.index != lastIdx) {
+                listState.scrollToItem(lastIdx, Int.MAX_VALUE / 2)
+                return@LaunchedEffect
+            }
+            val viewportBottom = info.viewportEndOffset - info.afterContentPadding
+            val itemBottom = lastVisible.offset + lastVisible.size
+            val delta = (itemBottom - viewportBottom).toFloat()
+            if (delta > 0f) listState.animateScrollBy(delta)
+        }
+
+        LaunchedEffect(sendTick) {
+            if (sendTick == 0) return@LaunchedEffect
+            autoScroll = true
             if (state.messages.isNotEmpty()) {
-                listState.animateScrollToItem(state.messages.lastIndex)
+                val lastIdx = state.messages.lastIndex
+                listState.animateScrollToItem(lastIdx, Int.MAX_VALUE / 2)
             }
         }
 
@@ -151,61 +312,141 @@ fun ChatScreen(
 
         AttachmentPreview(
             uri = pendingImage,
-            onClear = { pendingImage = null }
+            onClear = onClearPendingImage
         )
 
         InputBar(
             input = input,
-            onInputChange = { input = it },
-            canSend = !state.isResponding && (input.isNotBlank() || pendingImage != null),
-            onCamera = {
-                val granted = context.checkSelfPermission(Manifest.permission.CAMERA) ==
-                    PackageManager.PERMISSION_GRANTED
-                if (granted) {
-                    val uri = createTempImageUri(context)
-                    cameraUri.value = uri
-                    cameraLauncher.launch(uri)
-                } else {
-                    permissionLauncher.launch(Manifest.permission.CAMERA)
-                }
-            },
-            onGallery = {
-                galleryLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            },
-            onSend = {
-                vm.send(context, input, pendingImage)
-                input = ""
-                pendingImage = null
-            }
+            onInputChange = onInputChange,
+            isResponding = state.isResponding,
+            canSend = input.isNotBlank() || pendingImage != null,
+            onCamera = onCamera,
+            onGallery = onGallery,
+            onSend = onSend,
+            onCancel = onCancel
         )
     }
 }
 
 @Composable
-private fun ChatTopBar(onOpenSettings: () -> Unit) {
+private fun SessionDrawerContent(
+    sessions: List<ChatSessionEntity>,
+    currentId: Long?,
+    onNewChat: () -> Unit,
+    onSelect: (Long) -> Unit,
+    onDelete: (Long) -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .padding(16.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.chat_sessions_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = NomadSilver
+        )
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(NomadRoyal)
+                .clickable(onClick = onNewChat)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = null,
+                tint = NomadSilver,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.size(8.dp))
+            Text(
+                stringResource(R.string.chat_new_session),
+                style = MaterialTheme.typography.labelLarge.copy(color = NomadSilver),
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            items(sessions, key = { it.id }) { s ->
+                val selected = s.id == currentId
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (selected) NomadRoyal.copy(alpha = 0.22f)
+                            else Color.White.copy(alpha = 0.04f)
+                        )
+                        .clickable { onSelect(s.id) }
+                        .padding(horizontal = 12.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = s.title,
+                        modifier = Modifier.weight(1f),
+                        color = NomadSilver,
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .clickable { onDelete(s.id) },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = stringResource(R.string.chat_session_delete),
+                            tint = NomadMuted,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChatTopBar(onOpenDrawer: () -> Unit, onOpenSettings: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.06f))
+                .clickable(onClick = onOpenDrawer),
+            contentAlignment = Alignment.Center
         ) {
-            Image(
-                painter = painterResource(R.mipmap.ic_launcher),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize()
+            Icon(
+                Icons.Default.Menu,
+                contentDescription = stringResource(R.string.chat_session_menu),
+                tint = NomadMist,
+                modifier = Modifier.size(20.dp)
             )
         }
         Spacer(Modifier.size(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
-                text = "Nomad",
+                text = "NOMAD AI",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -256,7 +497,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
                 .clip(RoundedCornerShape(22.dp))
         ) {
             Image(
-                painter = painterResource(R.mipmap.ic_launcher),
+                painter = painterResource(R.drawable.ic_launcher_logo),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize()
             )
@@ -330,7 +571,9 @@ private fun MessageRow(msg: ChatMessage) {
                             .padding(bottom = 6.dp)
                     )
                 }
-                MessageBubble(msg, isUser)
+                if (!(isUser && msg.text.isBlank())) {
+                    MessageBubble(msg, isUser)
+                }
                 msg.toolTag?.takeIf { !isUser && it != "error" }?.let { tag ->
                     val label = toolTagLabel(tag)
                     if (label != null) {
@@ -383,9 +626,15 @@ private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
             .background(bg)
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
-        val displayText = if (msg.streaming) msg.text + "▍" else msg.text
+        val rendered = remember(msg.text, msg.streaming, isUser) {
+            if (isUser) AnnotatedString(msg.text)
+            else renderMarkdown(
+                text = msg.text,
+                appendCaret = msg.streaming
+            )
+        }
         Text(
-            text = displayText,
+            text = rendered,
             style = MaterialTheme.typography.bodyLarge.copy(
                 color = textColor,
                 fontSize = 15.sp,
@@ -393,6 +642,107 @@ private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
             )
         )
     }
+}
+
+private val MD_INLINE = Regex(
+    "(\\*\\*([^*\\n]+?)\\*\\*)|(__([^_\\n]+?)__)|(\\*([^*\\n]+?)\\*)|(_([^_\\n]+?)_)|(`([^`\\n]+?)`)"
+)
+
+private fun renderMarkdown(text: String, appendCaret: Boolean): AnnotatedString =
+    buildAnnotatedString {
+        val lines = text.split('\n')
+        lines.forEachIndexed { index, rawLine ->
+            if (index > 0) append('\n')
+            val leadingSpaces = rawLine.takeWhile { it == ' ' }.length
+            val trimmed = rawLine.drop(leadingSpaces)
+            val indent = " ".repeat(leadingSpaces)
+            when {
+                trimmed.startsWith("### ") -> {
+                    withStyle(
+                        SpanStyle(
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 17.sp
+                        )
+                    ) {
+                        appendInlineMd(indent + trimmed.removePrefix("### "))
+                    }
+                }
+                trimmed.startsWith("## ") -> {
+                    withStyle(
+                        SpanStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 19.sp
+                        )
+                    ) {
+                        appendInlineMd(indent + trimmed.removePrefix("## "))
+                    }
+                }
+                trimmed.startsWith("# ") -> {
+                    withStyle(
+                        SpanStyle(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 22.sp
+                        )
+                    ) {
+                        appendInlineMd(indent + trimmed.removePrefix("# "))
+                    }
+                }
+                trimmed.startsWith("- ") || trimmed.startsWith("* ") -> {
+                    append(indent)
+                    append("• ")
+                    appendInlineMd(trimmed.drop(2))
+                }
+                trimmed.matches(Regex("^\\d+\\. .*")) -> {
+                    append(indent)
+                    val dot = trimmed.indexOf(". ")
+                    append(trimmed.substring(0, dot + 2))
+                    appendInlineMd(trimmed.substring(dot + 2))
+                }
+                trimmed.startsWith("> ") -> {
+                    append(indent)
+                    withStyle(SpanStyle(color = Color(0xFFB7B0D4), fontStyle = FontStyle.Italic)) {
+                        appendInlineMd(trimmed.removePrefix("> "))
+                    }
+                }
+                else -> appendInlineMd(rawLine)
+            }
+        }
+        if (appendCaret) append("▍")
+    }
+
+private fun AnnotatedString.Builder.appendInlineMd(line: String) {
+    if (line.isEmpty()) return
+    var cursor = 0
+    for (match in MD_INLINE.findAll(line)) {
+        if (match.range.first > cursor) {
+            append(line.substring(cursor, match.range.first))
+        }
+        val g = match.groupValues
+        when {
+            g[1].isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(g[2])
+            }
+            g[3].isNotEmpty() -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                append(g[4])
+            }
+            g[5].isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                append(g[6])
+            }
+            g[7].isNotEmpty() -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                append(g[8])
+            }
+            g[9].isNotEmpty() -> withStyle(
+                SpanStyle(
+                    fontFamily = FontFamily.Monospace,
+                    background = Color.White.copy(alpha = 0.10f)
+                )
+            ) {
+                append(g[10])
+            }
+        }
+        cursor = match.range.last + 1
+    }
+    if (cursor < line.length) append(line.substring(cursor))
 }
 
 @Composable
@@ -502,10 +852,12 @@ private fun AttachmentPreview(uri: Uri?, onClear: () -> Unit) {
 private fun InputBar(
     input: String,
     onInputChange: (String) -> Unit,
+    isResponding: Boolean,
     canSend: Boolean,
     onCamera: () -> Unit,
     onGallery: () -> Unit,
-    onSend: () -> Unit
+    onSend: () -> Unit,
+    onCancel: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -558,7 +910,8 @@ private fun InputBar(
             )
         }
 
-        val bgBrush = if (canSend) {
+        val active = isResponding || canSend
+        val bgBrush = if (active) {
             Brush.linearGradient(listOf(NomadRoyal, NomadGlow))
         } else {
             SolidColor(Color.White.copy(alpha = 0.1f))
@@ -568,13 +921,15 @@ private fun InputBar(
                 .size(44.dp)
                 .clip(CircleShape)
                 .background(bgBrush)
-                .clickable(enabled = canSend, onClick = onSend),
+                .clickable(enabled = active) {
+                    if (isResponding) onCancel() else onSend()
+                },
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.AutoMirrored.Filled.Send,
+                imageVector = if (isResponding) Icons.Default.Close else Icons.AutoMirrored.Filled.Send,
                 contentDescription = stringResource(R.string.send),
-                tint = if (canSend) NomadSilver else NomadMuted,
+                tint = if (active) NomadSilver else NomadMuted,
                 modifier = Modifier.size(18.dp)
             )
         }
@@ -596,9 +951,9 @@ private fun CircleIconButton(onClick: () -> Unit, content: @Composable () -> Uni
 @Composable
 private fun toolTagLabel(tag: String): String? = when (tag) {
     "menu_translate" -> stringResource(R.string.tool_label_menu_translate)
-    "menu_search" -> stringResource(R.string.tool_label_menu_search)
     "expense" -> stringResource(R.string.tool_label_expense)
-    "travel" -> stringResource(R.string.tool_label_travel)
+    "cancelled" -> stringResource(R.string.tool_label_cancelled)
+    "chat", "travel", "menu_search" -> stringResource(R.string.tool_label_chat)
     else -> null
 }
 

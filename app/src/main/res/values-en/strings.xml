@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Nomad</string>
+    <string name="app_name">NOMAD AI</string>
     <string name="chat_hint">Snap a menu, find places, track spending — ask me anything</string>
     <string name="send">Send</string>
     <string name="camera">Camera</string>
@@ -27,6 +27,8 @@
     <string name="tool_label_menu_search">· Menu search</string>
     <string name="tool_label_expense">· Expense logged</string>
     <string name="tool_label_travel">· Travel info</string>
+    <string name="tool_label_chat">· Conversation</string>
+    <string name="tool_label_cancelled">· Cancelled</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_back">Back</string>
@@ -67,4 +69,20 @@
     <string name="model_download">Download</string>
     <string name="model_retry">Retry</string>
     <string name="model_failed_prefix">Failed: %1$s</string>
+
+    <string name="chat_sessions_title">Chats</string>
+    <string name="chat_new_session">New chat</string>
+    <string name="chat_session_menu">Open chats</string>
+    <string name="chat_session_delete">Delete chat</string>
+    <string name="chat_session_delete_title">Delete this chat?</string>
+    <string name="chat_session_delete_body">Deleted chat history cannot be recovered.</string>
+    <string name="chat_session_default_title">New chat</string>
+
+    <string name="settings_context_title">Conversation context</string>
+    <string name="settings_context_drop_oldest">Drop oldest turns</string>
+    <string name="settings_context_drop_oldest_body">When the limit is reached, the oldest turns are removed automatically. (Recommended)</string>
+    <string name="settings_context_reset">Reset</string>
+    <string name="settings_context_reset_body">When the limit is reached, all previous context is cleared and only the current message is used.</string>
+    <string name="settings_context_compact">Compact summary</string>
+    <string name="settings_context_compact_body">Older turns are compressed into a short summary. Uses extra compute.</string>
 </resources>

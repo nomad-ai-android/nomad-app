@@ -77,7 +77,7 @@ fun ModelSetupScreen(
                     .clip(RoundedCornerShape(16.dp))
             ) {
                 Image(
-                    painter = painterResource(R.mipmap.ic_launcher),
+                    painter = painterResource(R.drawable.ic_launcher_logo),
                     contentDescription = null,
                     modifier = Modifier.fillMaxSize()
                 )

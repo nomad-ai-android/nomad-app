@@ -5,14 +5,15 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.nomad.travel.NomadApp
-import com.nomad.travel.data.ChatHistory
 import com.nomad.travel.data.UserPrefs
+import com.nomad.travel.data.chat.ChatRepository
 import com.nomad.travel.llm.DeviceCapability
 import com.nomad.travel.llm.DownloadStatus
 import com.nomad.travel.llm.GemmaEngine
 import com.nomad.travel.llm.ModelCatalog
 import com.nomad.travel.llm.ModelDownloader
 import com.nomad.travel.llm.ModelEntry
+import com.nomad.travel.tools.ContextStrategy
 import com.nomad.travel.ui.setup.ModelRow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,14 +26,15 @@ data class SettingsUiState(
     val language: String = "ko",
     val systemPrompt: String = "",
     val activeModelId: String = ModelCatalog.recommended.id,
-    val modelRows: List<ModelRow> = emptyList()
+    val modelRows: List<ModelRow> = emptyList(),
+    val contextStrategy: ContextStrategy = ContextStrategy.DROP_OLDEST
 )
 
 class SettingsViewModel(
     private val prefs: UserPrefs,
     private val gemma: GemmaEngine,
     private val downloader: ModelDownloader,
-    private val history: ChatHistory,
+    private val chatRepo: ChatRepository,
     private val device: DeviceCapability
 ) : ViewModel() {
 
@@ -43,12 +45,21 @@ class SettingsViewModel(
     ) { arr -> arr.toList() }
 
     val state: StateFlow<SettingsUiState> = combine(
-        prefs.language,
-        prefs.systemPrompt,
-        prefs.activeModelId,
+        combine(
+            prefs.language,
+            prefs.systemPrompt,
+            prefs.activeModelId,
+            prefs.contextStrategy
+        ) { lang, prompt, activeId, strategy ->
+            listOf(lang, prompt, activeId, strategy)
+        },
         statusesFlow,
         refreshTick
-    ) { lang, prompt, activeId, statuses, _ ->
+    ) { base, statuses, _ ->
+        val lang = base[0] as String?
+        val prompt = base[1] as String?
+        val activeId = base[2] as String?
+        val strategy = base[3] as String?
         val rows = ModelCatalog.all.mapIndexed { i, entry ->
             ModelRow(
                 entry = entry,
@@ -62,7 +73,8 @@ class SettingsViewModel(
             language = lang ?: "ko",
             systemPrompt = prompt.orEmpty(),
             activeModelId = activeId ?: ModelCatalog.recommended.id,
-            modelRows = rows
+            modelRows = rows,
+            contextStrategy = ContextStrategy.from(strategy)
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
 
@@ -78,7 +90,13 @@ class SettingsViewModel(
         viewModelScope.launch { prefs.setSystemPrompt("") }
     }
 
-    fun clearChats() = history.clear()
+    fun setContextStrategy(strategy: ContextStrategy) {
+        viewModelScope.launch { prefs.setContextStrategy(ContextStrategy.toKey(strategy)) }
+    }
+
+    fun clearChats() {
+        viewModelScope.launch { chatRepo.deleteAllSessions() }
+    }
 
     fun startDownload(entry: ModelEntry) {
         if (!device.isEligible(entry)) return
@@ -110,7 +128,7 @@ class SettingsViewModel(
                     prefs = app.container.prefs,
                     gemma = app.container.gemma,
                     downloader = app.container.downloader,
-                    history = app.container.chatHistory,
+                    chatRepo = app.container.chatRepository,
                     device = app.container.device
                 ) as T
             }

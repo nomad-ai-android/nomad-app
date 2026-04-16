@@ -2,6 +2,7 @@ package com.nomad.travel.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -15,14 +16,20 @@ class UserPrefs(private val context: Context) {
     private val KEY_LANGUAGE = stringPreferencesKey("ui_language")
     private val KEY_ACTIVE_MODEL = stringPreferencesKey("active_model_id")
     private val KEY_SYSTEM_PROMPT = stringPreferencesKey("system_prompt")
+    private val KEY_CONTEXT_STRATEGY = stringPreferencesKey("context_strategy")
+    private val KEY_LAST_SESSION_ID = longPreferencesKey("last_session_id")
 
     val language: Flow<String?> = context.dataStore.data.map { it[KEY_LANGUAGE] }
     val activeModelId: Flow<String?> = context.dataStore.data.map { it[KEY_ACTIVE_MODEL] }
     val systemPrompt: Flow<String?> = context.dataStore.data.map { it[KEY_SYSTEM_PROMPT] }
+    val contextStrategy: Flow<String?> = context.dataStore.data.map { it[KEY_CONTEXT_STRATEGY] }
+    val lastSessionId: Flow<Long?> = context.dataStore.data.map { it[KEY_LAST_SESSION_ID] }
 
     suspend fun languageBlocking(): String? = language.first()
     suspend fun activeModelIdBlocking(): String? = activeModelId.first()
     suspend fun systemPromptBlocking(): String? = systemPrompt.first()
+    suspend fun contextStrategyBlocking(): String? = contextStrategy.first()
+    suspend fun lastSessionIdBlocking(): Long? = lastSessionId.first()
 
     suspend fun setLanguage(code: String) {
         context.dataStore.edit { it[KEY_LANGUAGE] = code }
@@ -34,5 +41,13 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setSystemPrompt(prompt: String) {
         context.dataStore.edit { it[KEY_SYSTEM_PROMPT] = prompt }
+    }
+
+    suspend fun setContextStrategy(key: String) {
+        context.dataStore.edit { it[KEY_CONTEXT_STRATEGY] = key }
+    }
+
+    suspend fun setLastSessionId(id: Long) {
+        context.dataStore.edit { it[KEY_LAST_SESSION_ID] = id }
     }
 }
