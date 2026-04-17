@@ -43,18 +43,12 @@
     <string name="settings_check_update">Check for updates</string>
     <string name="update_checking">Checking…</string>
     <string name="update_up_to_date">You\'re up to date</string>
-    <string name="update_available_title">New version %1$s</string>
-    <string name="update_download_install">Download &amp; install</string>
     <string name="update_downloading">Downloading… %1$d%%</string>
-    <string name="update_install_now">Install now</string>
+    <string name="update_install_now">Restart to install</string>
     <string name="update_error">Failed to check for updates</string>
-    <string name="update_no_apk">No APK found in the release</string>
-    <string name="update_allow_unknown">Permission to install from unknown sources is required</string>
-    <string name="update_open_settings">Open settings</string>
     <string name="settings_auto_update_check">Auto update check</string>
     <string name="update_available_desc">A new update is available</string>
     <string name="update_action">Update</string>
-    <string name="update_skip">Skip</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_back">Back</string>
@@ -78,6 +72,10 @@
 
     <string name="common_cancel">Cancel</string>
     <string name="common_delete">Delete</string>
+
+    <string name="settings_legal_section">Legal</string>
+    <string name="settings_privacy_policy">Privacy Policy</string>
+    <string name="settings_terms_of_service">Terms of Service</string>
 
     <string name="language_subtitle">Your AI travel companion</string>
     <string name="language_select_title">Select language</string>

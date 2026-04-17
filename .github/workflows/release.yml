@@ -1,22 +1,20 @@
-# Tag-triggered release — push a tag like `v0.2.0` to build & publish the APK.
+# Tag-triggered release — push a tag like `v0.2.0` to build an AAB and
+# publish it to Google Play Console.
 #
 # Required GitHub Secrets (Settings → Secrets and variables → Actions):
-#   SIGNING_KEYSTORE_BASE64   base64-encoded release keystore (no line breaks)
+#   SIGNING_KEYSTORE_BASE64   base64-encoded upload keystore (no line breaks)
 #   SIGNING_KEYSTORE_PASSWORD keystore password
 #   SIGNING_KEY_ALIAS         key alias
 #   SIGNING_KEY_PASSWORD      key password
+#   PLAY_SERVICE_ACCOUNT_JSON Play Console service-account JSON key (raw JSON)
 #
-# Generate a keystore once (macOS/Linux):
-#   keytool -genkeypair -v -keystore release.keystore -alias nomad \
-#     -keyalg RSA -keysize 2048 -validity 10000 -storetype PKCS12
-#
-# Encode for GitHub Secrets:
-#   base64 < release.keystore | tr -d '\n'    # copy the single-line output
-#
-# Verify it round-trips correctly before pasting:
-#   base64 < release.keystore | tr -d '\n' | base64 -d | md5sum
-#   md5sum release.keystore
-#   (both should match)
+# One-time setup (see docs in README):
+#   1. Google Play Console → Setup → API access → create a service account
+#      with "Release manager" role, download its JSON key.
+#   2. Upload the first AAB manually at least once — Play requires one
+#      human-submitted release before the API can publish further updates.
+#   3. Enroll in Play App Signing so Play manages the app signing key.
+#      The keystore in this repo is the *upload* key, not the signing key.
 
 name: Release
 
@@ -26,7 +24,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   release:
@@ -55,11 +53,8 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
         run: |
           printf '%s' "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
-          echo "Keystore size: $(stat -c%s "$RUNNER_TEMP/release.keystore") bytes"
-          keytool -list -keystore "$RUNNER_TEMP/release.keystore" \
-            -storepass "${{ secrets.SIGNING_KEYSTORE_PASSWORD }}" -storetype PKCS12 2>&1 | head -5
 
-      - name: Build release APK
+      - name: Build release AAB
         env:
           VERSION_NAME: ${{ steps.ver.outputs.version }}
           VERSION_CODE: ${{ github.run_number }}
@@ -67,35 +62,34 @@ jobs:
           SIGNING_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease --no-configuration-cache
+        run: ./gradlew :app:bundleRelease --no-configuration-cache
 
-      - name: Rename APK
+      - name: Locate AAB
+        id: aab
         run: |
-          APK=$(find app/build/outputs/apk/release -name '*.apk' | head -n1)
-          cp "$APK" "nomad-${{ steps.ver.outputs.version }}.apk"
+          AAB=$(find app/build/outputs/bundle/release -name '*.aab' | head -n1)
+          echo "path=$AAB" >> "$GITHUB_OUTPUT"
 
-      - name: Generate changelog
-        id: changelog
+      - name: Generate release notes
+        id: notes
         run: |
-          # Find the previous tag (the one before the current tag)
+          mkdir -p distribution/whatsnew
           PREV_TAG=$(git tag --sort=-creatordate | grep '^v' | sed -n '2p')
           if [ -z "$PREV_TAG" ]; then
-            # First release — list all commits
             LOGS=$(git log --pretty=format:'- %s' --reverse)
           else
             LOGS=$(git log "${PREV_TAG}..HEAD" --pretty=format:'- %s' --reverse)
           fi
-          # Write to file to preserve newlines
-          {
-            echo "## Changes"
-            echo ""
-            echo "$LOGS"
-            echo ""
-            echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG:-$(git rev-list --max-parents=0 HEAD | head -1)}...${{ github.ref_name }}"
-          } > release_notes.md
+          # Play allows up to 500 chars per locale; truncate defensively.
+          printf '%s\n' "$LOGS" | head -c 480 > distribution/whatsnew/whatsnew-en-US.txt
+          printf '%s\n' "$LOGS" | head -c 480 > distribution/whatsnew/whatsnew-ko-KR.txt
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - name: Upload to Play Console (internal track)
+        uses: r0adkll/upload-google-play@v1
         with:
-          files: nomad-${{ steps.ver.outputs.version }}.apk
-          body_path: release_notes.md
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.nomad.travel
+          releaseFiles: ${{ steps.aab.outputs.path }}
+          track: internal
+          status: completed
+          whatsNewDirectory: distribution/whatsnew

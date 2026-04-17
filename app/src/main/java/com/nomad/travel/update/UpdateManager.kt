@@ -1,80 +1,112 @@
 package com.nomad.travel.update
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import androidx.core.content.FileProvider
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
+import com.google.android.play.core.appupdate.AppUpdateInfo
+import com.google.android.play.core.appupdate.AppUpdateManager
+import com.google.android.play.core.appupdate.AppUpdateManagerFactory
+import com.google.android.play.core.appupdate.AppUpdateOptions
+import com.google.android.play.core.install.InstallStateUpdatedListener
+import com.google.android.play.core.install.model.AppUpdateType
+import com.google.android.play.core.install.model.InstallStatus
+import com.google.android.play.core.install.model.UpdateAvailability
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
-class UpdateManager(
-    private val context: Context,
-    val checker: UpdateChecker
-) {
+sealed interface UpdateState {
+    data object Idle : UpdateState
+    data object Checking : UpdateState
+    data object UpToDate : UpdateState
+    data class Available(val versionCode: Int) : UpdateState
+    data class Downloading(val progress: Float) : UpdateState
+    data object ReadyToInstall : UpdateState
+    data object Error : UpdateState
+}
 
-    suspend fun downloadApk(
-        url: String,
-        onProgress: (Float) -> Unit
-    ): File? = withContext(Dispatchers.IO) {
-        runCatching {
-            val apkDir = File(context.cacheDir, "updates").apply { mkdirs() }
-            val outFile = File(apkDir, "update.apk")
-            if (outFile.exists()) outFile.delete()
+class UpdateManager(context: Context) {
 
-            val conn = (URL(url).openConnection() as HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 10_000
-                readTimeout = 60_000
-                instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "nomad-app")
+    private val appUpdateManager: AppUpdateManager =
+        AppUpdateManagerFactory.create(context.applicationContext)
+
+    private var latestInfo: AppUpdateInfo? = null
+
+    private val _state = MutableStateFlow<UpdateState>(UpdateState.Idle)
+    val state: StateFlow<UpdateState> = _state
+
+    private val listener = InstallStateUpdatedListener { installState ->
+        when (installState.installStatus()) {
+            InstallStatus.DOWNLOADING -> {
+                val total = installState.totalBytesToDownload()
+                val downloaded = installState.bytesDownloaded()
+                val progress = if (total > 0) downloaded.toFloat() / total else 0f
+                _state.value = UpdateState.Downloading(progress.coerceIn(0f, 1f))
             }
-            try {
-                if (conn.responseCode !in 200..299) return@runCatching null
-                val total = conn.contentLengthLong.takeIf { it > 0 } ?: -1L
-                conn.inputStream.use { input ->
-                    outFile.outputStream().use { out ->
-                        val buf = ByteArray(64 * 1024)
-                        var downloaded = 0L
-                        while (true) {
-                            val n = input.read(buf)
-                            if (n <= 0) break
-                            out.write(buf, 0, n)
-                            downloaded += n
-                            if (total > 0) {
-                                onProgress((downloaded.toFloat() / total).coerceIn(0f, 1f))
-                            }
-                        }
-                    }
-                }
-                outFile
-            } finally {
-                conn.disconnect()
-            }
-        }.getOrNull()
+            InstallStatus.DOWNLOADED -> _state.value = UpdateState.ReadyToInstall
+            InstallStatus.FAILED, InstallStatus.CANCELED -> _state.value = UpdateState.Error
+            else -> Unit
+        }
     }
 
-    fun installApk(file: File) {
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
+    fun registerListener() {
+        appUpdateManager.registerListener(listener)
+    }
+
+    fun unregisterListener() {
+        appUpdateManager.unregisterListener(listener)
+    }
+
+    suspend fun checkForUpdate() {
+        _state.value = UpdateState.Checking
+        val info = fetchInfo()
+        if (info == null) {
+            _state.value = UpdateState.Error
+            return
+        }
+        latestInfo = info
+        _state.value = when {
+            info.installStatus() == InstallStatus.DOWNLOADED -> UpdateState.ReadyToInstall
+            info.updateAvailability() == UpdateAvailability.UPDATE_AVAILABLE &&
+                info.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE) ->
+                UpdateState.Available(info.availableVersionCode())
+            else -> UpdateState.UpToDate
+        }
+    }
+
+    /** Refresh state when activity resumes (e.g. to detect DOWNLOADED). */
+    suspend fun refreshOnResume() {
+        val info = fetchInfo() ?: return
+        if (info.installStatus() == InstallStatus.DOWNLOADED) {
+            latestInfo = info
+            _state.value = UpdateState.ReadyToInstall
+        }
+    }
+
+    fun startFlexibleUpdate(launcher: ActivityResultLauncher<IntentSenderRequest>) {
+        val info = latestInfo ?: return
+        appUpdateManager.startUpdateFlowForResult(
+            info,
+            launcher,
+            AppUpdateOptions.newBuilder(AppUpdateType.FLEXIBLE).build()
         )
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(uri, "application/vnd.android.package-archive")
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-        }
-        context.startActivity(intent)
     }
 
-    fun canInstallFromUnknownSources(): Boolean =
-        context.packageManager.canRequestPackageInstalls()
+    fun completeUpdate() {
+        appUpdateManager.completeUpdate()
+    }
 
-    fun unknownSourcesSettingsIntent(): Intent =
-        Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
-            data = Uri.parse("package:${context.packageName}")
+    fun setIdle() {
+        _state.value = UpdateState.Idle
+    }
+
+    private suspend fun fetchInfo(): AppUpdateInfo? = runCatching {
+        suspendCancellableCoroutine<AppUpdateInfo> { cont ->
+            appUpdateManager.appUpdateInfo
+                .addOnSuccessListener { cont.resume(it) }
+                .addOnFailureListener { cont.resumeWithException(it) }
         }
+    }.getOrNull()
 }

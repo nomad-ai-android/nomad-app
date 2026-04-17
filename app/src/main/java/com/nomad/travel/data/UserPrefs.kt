@@ -19,7 +19,6 @@ class UserPrefs(private val context: Context) {
     private val KEY_SYSTEM_PROMPT = stringPreferencesKey("system_prompt")
     private val KEY_CONTEXT_STRATEGY = stringPreferencesKey("context_strategy")
     private val KEY_LAST_SESSION_ID = longPreferencesKey("last_session_id")
-    private val KEY_SKIPPED_VERSION = stringPreferencesKey("skipped_version")
     private val KEY_AUTO_UPDATE_CHECK = booleanPreferencesKey("auto_update_check")
 
     val language: Flow<String?> = context.dataStore.data.map { it[KEY_LANGUAGE] }
@@ -53,13 +52,6 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setLastSessionId(id: Long) {
         context.dataStore.edit { it[KEY_LAST_SESSION_ID] = id }
-    }
-
-    suspend fun skippedVersionBlocking(): String? =
-        context.dataStore.data.first()[KEY_SKIPPED_VERSION]
-
-    suspend fun setSkippedVersion(version: String) {
-        context.dataStore.edit { it[KEY_SKIPPED_VERSION] = version }
     }
 
     suspend fun autoUpdateCheckBlocking(): Boolean =

@@ -54,7 +54,7 @@ When NOMAD AI needs your preference, it shows tappable option chips so you can r
 
 ## Getting Started
 
-1. **Download** the app from [Releases](../../releases)
+1. **Download** the app from the Google Play Store
 2. **Choose your language** — Korean, English, Chinese, or Japanese
 3. **Download a model** — pick one that fits your device:
    - **Gemma 4 2B** (2.4 GB) — works on most phones with 4 GB+ RAM

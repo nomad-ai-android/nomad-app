@@ -43,18 +43,12 @@
     <string name="settings_check_update">检查更新</string>
     <string name="update_checking">检查中…</string>
     <string name="update_up_to_date">已是最新版本</string>
-    <string name="update_available_title">新版本 %1$s</string>
-    <string name="update_download_install">下载并安装</string>
     <string name="update_downloading">下载中… %1$d%%</string>
-    <string name="update_install_now">立即安装</string>
+    <string name="update_install_now">重启以安装</string>
     <string name="update_error">检查更新失败</string>
-    <string name="update_no_apk">发布中没有 APK 文件</string>
-    <string name="update_allow_unknown">需要允许安装来自未知来源的应用</string>
-    <string name="update_open_settings">打开设置</string>
     <string name="settings_auto_update_check">自动检查更新</string>
     <string name="update_available_desc">有新的更新可用</string>
     <string name="update_action">更新</string>
-    <string name="update_skip">跳过</string>
 
     <string name="settings_title">设置</string>
     <string name="settings_back">返回</string>
@@ -78,6 +72,10 @@
 
     <string name="common_cancel">取消</string>
     <string name="common_delete">删除</string>
+
+    <string name="settings_legal_section">法律信息</string>
+    <string name="settings_privacy_policy">隐私政策</string>
+    <string name="settings_terms_of_service">服务条款</string>
 
     <string name="language_subtitle">你的旅行 AI 伙伴</string>
     <string name="language_select_title">选择语言</string>

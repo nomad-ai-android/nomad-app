@@ -1,6 +1,7 @@
 package com.nomad.travel.ui.settings
 
-import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -27,6 +28,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,7 +40,6 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,11 +48,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +69,11 @@ import com.nomad.travel.ui.theme.NomadMist
 import com.nomad.travel.ui.theme.NomadMuted
 import com.nomad.travel.ui.theme.NomadRoyal
 import com.nomad.travel.ui.theme.NomadSilver
+import com.nomad.travel.update.UpdateState
+import androidx.compose.runtime.LaunchedEffect
+
+private const val PRIVACY_POLICY_URL = "https://nomad-ai-android.github.io/privacy.html"
+private const val TERMS_OF_SERVICE_URL = "https://nomad-ai-android.github.io/terms.html"
 
 private data class LangOption(val code: String, val label: String, val flag: String)
 
@@ -92,7 +97,10 @@ fun SettingsScreen(
     var pendingDelete by remember { mutableStateOf<ModelEntry?>(null) }
     var languageExpanded by remember { mutableStateOf(false) }
     var modelsExpanded by remember { mutableStateOf(false) }
-    var unknownSourcesIntent by remember { mutableStateOf<Intent?>(null) }
+
+    val updateLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { /* Play handles result visually; state flows come from InstallStateUpdatedListener. */ }
 
     Column(
         modifier = Modifier
@@ -297,14 +305,8 @@ fun SettingsScreen(
                     state = state.updateState,
                     currentVersion = state.currentVersion,
                     onCheck = { vm.checkForUpdate() },
-                    onDownload = { vm.downloadAndInstall() },
-                    onInstall = {
-                        if (vm.canInstallUnknownSources()) {
-                            vm.installUpdate()
-                        } else {
-                            unknownSourcesIntent = vm.unknownSourcesIntent()
-                        }
-                    },
+                    onStart = { vm.startUpdate(updateLauncher) },
+                    onInstall = { vm.installUpdate() },
                     onDismiss = { vm.dismissUpdateState() }
                 )
             }
@@ -315,6 +317,21 @@ fun SettingsScreen(
                     label = stringResource(R.string.settings_clear_chats),
                     onClick = { confirmClear = true }
                 )
+            }
+
+            // ─── Legal ────────────────────────────
+            Section(stringResource(R.string.settings_legal_section)) {
+                val uriHandler = LocalUriHandler.current
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LegalRow(
+                        label = stringResource(R.string.settings_privacy_policy),
+                        onClick = { uriHandler.openUri(PRIVACY_POLICY_URL) }
+                    )
+                    LegalRow(
+                        label = stringResource(R.string.settings_terms_of_service),
+                        onClick = { uriHandler.openUri(TERMS_OF_SERVICE_URL) }
+                    )
+                }
             }
 
             Spacer(Modifier.height(8.dp))
@@ -339,28 +356,6 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmClear = false }) {
-                    Text(stringResource(R.string.common_cancel))
-                }
-            },
-            containerColor = NomadInputField,
-            titleContentColor = NomadSilver,
-            textContentColor = NomadMist
-        )
-    }
-
-    unknownSourcesIntent?.let { intent ->
-        val ctx = LocalContext.current
-        AlertDialog(
-            onDismissRequest = { unknownSourcesIntent = null },
-            title = { Text(stringResource(R.string.update_allow_unknown)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    ctx.startActivity(intent)
-                    unknownSourcesIntent = null
-                }) { Text(stringResource(R.string.update_open_settings)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { unknownSourcesIntent = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },
@@ -585,7 +580,7 @@ private fun UpdateSection(
     state: UpdateState,
     currentVersion: String,
     onCheck: () -> Unit,
-    onDownload: () -> Unit,
+    onStart: () -> Unit,
     onInstall: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -639,25 +634,15 @@ private fun UpdateSection(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = stringResource(
-                            R.string.update_available_title,
-                            state.release.versionName
-                        ),
+                        text = stringResource(R.string.update_available_desc),
                         style = MaterialTheme.typography.titleMedium.copy(color = NomadSilver),
                         fontWeight = FontWeight.SemiBold
                     )
-                    state.release.notes?.let { notes ->
-                        Text(
-                            text = notes.take(200),
-                            style = MaterialTheme.typography.bodySmall.copy(color = NomadMist),
-                            maxLines = 4
-                        )
-                    }
                     Spacer(Modifier.size(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         PrimaryButton(
-                            stringResource(R.string.update_download_install),
-                            onClick = onDownload
+                            stringResource(R.string.update_action),
+                            onClick = onStart
                         )
                         SecondaryButton(
                             stringResource(R.string.common_cancel),
@@ -699,10 +684,7 @@ private fun UpdateSection(
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = stringResource(
-                            if (state.message == "update_no_apk") R.string.update_no_apk
-                            else R.string.update_error
-                        ),
+                        text = stringResource(R.string.update_error),
                         style = MaterialTheme.typography.bodyMedium.copy(
                             color = MaterialTheme.colorScheme.error
                         )
@@ -714,6 +696,33 @@ private fun UpdateSection(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LegalRow(label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = NomadSilver,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            Icons.AutoMirrored.Filled.OpenInNew,
+            contentDescription = null,
+            tint = NomadMist,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 

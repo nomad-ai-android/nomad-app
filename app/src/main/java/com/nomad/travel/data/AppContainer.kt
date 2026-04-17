@@ -11,7 +11,6 @@ import com.nomad.travel.llm.ModelDownloader
 import com.nomad.travel.ocr.OcrService
 import com.nomad.travel.tools.CurrencyService
 import com.nomad.travel.tools.ToolRouter
-import com.nomad.travel.update.UpdateChecker
 import com.nomad.travel.update.UpdateManager
 
 interface AppContainer {
@@ -25,7 +24,6 @@ interface AppContainer {
     val chatRepository: ChatRepository
     val device: DeviceCapability
     val updateManager: UpdateManager
-    val updateChecker: UpdateChecker
 }
 
 class DefaultAppContainer(context: Context) : AppContainer {
@@ -38,16 +36,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
     override val downloader: ModelDownloader by lazy { ModelDownloader(appContext) }
     override val currencyService: CurrencyService by lazy { CurrencyService() }
 
-    override val updateChecker: UpdateChecker by lazy {
-        UpdateChecker(com.nomad.travel.BuildConfig.GITHUB_REPO)
-    }
-
-    override val updateManager: UpdateManager by lazy {
-        UpdateManager(
-            context = appContext,
-            checker = updateChecker
-        )
-    }
+    override val updateManager: UpdateManager by lazy { UpdateManager(appContext) }
 
     override val chatRepository: ChatRepository by lazy {
         val db = ChatDatabase.get(appContext)

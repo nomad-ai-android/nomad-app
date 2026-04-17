@@ -226,8 +226,6 @@ fun ChatScreen(
             onResolveCurrency = { live -> vm.resolveCurrency(live) },
             onResolveAsk = { option -> vm.resolveAsk(context, option) },
             onDismissPending = { vm.dismissPending() },
-            onStartUpdate = { vm.startUpdate() },
-            onSkipUpdate = { vm.skipUpdate() },
             onMic = {
                 if (state.isListening) {
                     vm.stopListening()
@@ -321,9 +319,7 @@ private fun ChatScreenBody(
     onOpenMenuView: (Uri, String) -> Unit,
     onResolveCurrency: (Boolean) -> Unit,
     onResolveAsk: (String) -> Unit,
-    onDismissPending: () -> Unit,
-    onStartUpdate: () -> Unit = {},
-    onSkipUpdate: () -> Unit = {}
+    onDismissPending: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -457,21 +453,6 @@ private fun ChatScreenBody(
                 }
             }
 
-            // Floating update card
-            androidx.compose.animation.AnimatedVisibility(
-                visible = state.updateBanner !is UpdateBannerState.Hidden,
-                enter = fadeIn(tween(300)) + expandVertically(tween(300)),
-                exit = fadeOut(tween(200)) + shrinkVertically(tween(200)),
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                UpdateFloatingCard(
-                    bannerState = state.updateBanner,
-                    onUpdate = onStartUpdate,
-                    onSkip = onSkipUpdate
-                )
-            }
         }
 
         PendingActionCard(
@@ -1473,122 +1454,6 @@ private fun ChoiceButton(
                 fontWeight = FontWeight.SemiBold
             )
         )
-    }
-}
-
-@Composable
-private fun UpdateFloatingCard(
-    bannerState: UpdateBannerState,
-    onUpdate: () -> Unit,
-    onSkip: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(NomadAssistantBubble.copy(alpha = 0.97f))
-            .padding(14.dp)
-    ) {
-        when (bannerState) {
-            is UpdateBannerState.Available -> {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Download,
-                        contentDescription = null,
-                        tint = NomadGlow,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(
-                                R.string.update_available_title,
-                                bannerState.release.versionName
-                            ),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                color = NomadSilver,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                        Text(
-                            text = stringResource(R.string.update_available_desc),
-                            style = MaterialTheme.typography.bodySmall.copy(color = NomadMist)
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.update_action),
-                        color = NomadGlow,
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(NomadGlow.copy(alpha = 0.12f))
-                            .clickable(onClick = onUpdate)
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = stringResource(R.string.update_skip),
-                        tint = NomadMuted,
-                        modifier = Modifier
-                            .size(18.dp)
-                            .clickable(onClick = onSkip)
-                    )
-                }
-            }
-            is UpdateBannerState.Downloading -> {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Download,
-                            contentDescription = null,
-                            tint = NomadGlow,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = stringResource(
-                                R.string.update_downloading,
-                                (bannerState.progress * 100).toInt()
-                            ),
-                            style = MaterialTheme.typography.bodyMedium.copy(color = NomadSilver)
-                        )
-                    }
-                    LinearProgressIndicator(
-                        progress = { bannerState.progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(4.dp)
-                            .clip(RoundedCornerShape(2.dp)),
-                        color = NomadGlow,
-                        trackColor = NomadMuted.copy(alpha = 0.3f)
-                    )
-                }
-            }
-            is UpdateBannerState.Installing -> {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Download,
-                        contentDescription = null,
-                        tint = NomadGlow,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.update_install_now),
-                        style = MaterialTheme.typography.bodyMedium.copy(color = NomadSilver)
-                    )
-                }
-            }
-            else -> {}
-        }
     }
 }
 

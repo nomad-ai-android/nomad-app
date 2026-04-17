@@ -24,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
 import com.nomad.travel.ui.chat.ChatScreen
 import com.nomad.travel.ui.menu.MenuSplitScreen
 import com.nomad.travel.ui.onboarding.LanguageScreen
@@ -53,6 +54,19 @@ class MainActivity : ComponentActivity() {
         super.attachBaseContext(newBase.createConfigurationContext(config))
     }
 
+    override fun onResume() {
+        super.onResume()
+        val app = application as NomadApp
+        app.container.updateManager.registerListener()
+        lifecycleScope.launch { app.container.updateManager.refreshOnResume() }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        val app = application as NomadApp
+        app.container.updateManager.unregisterListener()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -60,6 +74,13 @@ class MainActivity : ComponentActivity() {
         val app = application as NomadApp
         val prefs = app.container.prefs
         val gemma = app.container.gemma
+        val updateManager = app.container.updateManager
+
+        lifecycleScope.launch {
+            if (prefs.autoUpdateCheckBlocking()) {
+                updateManager.checkForUpdate()
+            }
+        }
 
         val initial: Destination = runBlocking {
             val lang = prefs.languageBlocking()

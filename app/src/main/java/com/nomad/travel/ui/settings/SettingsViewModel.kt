@@ -1,5 +1,7 @@
 package com.nomad.travel.ui.settings
 
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -16,25 +18,14 @@ import com.nomad.travel.llm.ModelDownloader
 import com.nomad.travel.llm.ModelEntry
 import com.nomad.travel.tools.ContextStrategy
 import com.nomad.travel.ui.setup.ModelRow
-import com.nomad.travel.update.UpdateChecker
 import com.nomad.travel.update.UpdateManager
+import com.nomad.travel.update.UpdateState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.io.File
-
-sealed interface UpdateState {
-    data object Idle : UpdateState
-    data object Checking : UpdateState
-    data object UpToDate : UpdateState
-    data class Available(val release: UpdateChecker.LatestRelease) : UpdateState
-    data class Downloading(val progress: Float) : UpdateState
-    data class ReadyToInstall(val file: File) : UpdateState
-    data class Error(val message: String) : UpdateState
-}
 
 data class SettingsUiState(
     val language: String = "ko",
@@ -57,7 +48,6 @@ class SettingsViewModel(
 ) : ViewModel() {
 
     private val refreshTick = MutableStateFlow(0)
-    private val updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
 
     private val statusesFlow = combine(
         ModelCatalog.all.map { downloader.status(it) }
@@ -74,7 +64,7 @@ class SettingsViewModel(
         },
         statusesFlow,
         refreshTick,
-        updateState,
+        updateManager.state,
         prefs.autoUpdateCheck
     ) { base, statuses, _, uState, autoUpdate ->
         val lang = base[0] as String?
@@ -147,57 +137,19 @@ class SettingsViewModel(
     }
 
     fun checkForUpdate() {
-        if (updateState.value is UpdateState.Checking ||
-            updateState.value is UpdateState.Downloading
-        ) return
-
-        updateState.value = UpdateState.Checking
-        viewModelScope.launch {
-            val latest = updateManager.checker.fetchLatest()
-            if (latest == null) {
-                updateState.value = UpdateState.Error("update_error")
-                return@launch
-            }
-            if (updateManager.checker.isNewer(latest.versionName, BuildConfig.VERSION_NAME)) {
-                updateState.value = UpdateState.Available(latest)
-            } else {
-                updateState.value = UpdateState.UpToDate
-            }
-        }
+        viewModelScope.launch { updateManager.checkForUpdate() }
     }
 
-    fun downloadAndInstall() {
-        val release = (updateState.value as? UpdateState.Available)?.release ?: return
-        val apkUrl = release.apkUrl
-        if (apkUrl.isNullOrBlank()) {
-            updateState.value = UpdateState.Error("update_no_apk")
-            return
-        }
-
-        updateState.value = UpdateState.Downloading(0f)
-        viewModelScope.launch {
-            val file = updateManager.downloadApk(apkUrl) { progress ->
-                updateState.value = UpdateState.Downloading(progress)
-            }
-            if (file != null) {
-                updateState.value = UpdateState.ReadyToInstall(file)
-            } else {
-                updateState.value = UpdateState.Error("update_error")
-            }
-        }
+    fun startUpdate(launcher: ActivityResultLauncher<IntentSenderRequest>) {
+        updateManager.startFlexibleUpdate(launcher)
     }
 
     fun installUpdate() {
-        val file = (updateState.value as? UpdateState.ReadyToInstall)?.file ?: return
-        updateManager.installApk(file)
+        updateManager.completeUpdate()
     }
 
-    fun canInstallUnknownSources(): Boolean = updateManager.canInstallFromUnknownSources()
-
-    fun unknownSourcesIntent() = updateManager.unknownSourcesSettingsIntent()
-
     fun dismissUpdateState() {
-        updateState.value = UpdateState.Idle
+        updateManager.setIdle()
     }
 
     companion object {

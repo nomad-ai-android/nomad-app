@@ -20,8 +20,6 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
-
-        buildConfigField("String", "GITHUB_REPO", "\"hyuck0221/nomad-app\"")
     }
 
     signingConfigs {
@@ -119,4 +117,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
 
     implementation(libs.androidx.work.runtime.ktx)
+
+    implementation(libs.play.app.update)
+    implementation(libs.play.app.update.ktx)
 }
