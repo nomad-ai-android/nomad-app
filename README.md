@@ -96,4 +96,4 @@ Everything happens on your device:
 
 ## License
 
-This project is provided as-is for personal and educational use.
+Apache-2.0 license
