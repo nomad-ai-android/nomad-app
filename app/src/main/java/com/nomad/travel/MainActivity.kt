@@ -15,16 +15,23 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.nomad.travel.R
 import com.nomad.travel.ui.chat.ChatScreen
 import com.nomad.travel.ui.menu.MenuSplitScreen
 import com.nomad.travel.ui.onboarding.LanguageScreen
@@ -44,9 +51,12 @@ private data class MenuViewArgs(val uri: Uri, val text: String)
 
 class MainActivity : ComponentActivity() {
 
+    private var attachedLanguage: String = "ko"
+
     override fun attachBaseContext(newBase: Context) {
         val app = newBase.applicationContext as NomadApp
         val code = runBlocking { app.container.prefs.languageBlocking() } ?: "ko"
+        attachedLanguage = code
         val locale = Locale(code)
         Locale.setDefault(locale)
         val config = Configuration(newBase.resources.configuration)
@@ -105,18 +115,34 @@ class MainActivity : ComponentActivity() {
                     activityContext.createConfigurationContext(cfg)
                 }
 
+                LaunchedEffect(langPref) {
+                    val newLang = langPref ?: return@LaunchedEffect
+                    if (newLang != attachedLanguage) {
+                        activity.recreate()
+                    }
+                }
+
                 CompositionLocalProvider(
                     LocalContext provides localizedContext,
                     LocalActivityResultRegistryOwner provides activity,
                     LocalOnBackPressedDispatcherOwner provides activity
                 ) {
-                    var destination by remember { mutableStateOf(initial) }
+                    val destinationSaver = remember {
+                        Saver<Destination, String>(
+                            save = { it.name },
+                            restore = { runCatching { Destination.valueOf(it) }.getOrNull() ?: initial }
+                        )
+                    }
+                    var destination by rememberSaveable(stateSaver = destinationSaver) {
+                        mutableStateOf(initial)
+                    }
                     var menuArgs by remember { mutableStateOf<MenuViewArgs?>(null) }
                     var translateLangs by remember { mutableStateOf<Pair<String, String>?>(null) }
                     var interpretLangs by remember { mutableStateOf<Pair<String, String>?>(null) }
                     val scope = rememberCoroutineScope()
 
                     var fullscreenText by remember { mutableStateOf<String?>(null) }
+                    var showExitConfirm by remember { mutableStateOf(false) }
 
                     BackHandler(
                         enabled = destination == Destination.SETTINGS ||
@@ -125,6 +151,28 @@ class MainActivity : ComponentActivity() {
                             destination == Destination.INTERPRET
                     ) {
                         destination = Destination.CHAT
+                    }
+
+                    BackHandler(enabled = destination == Destination.CHAT) {
+                        showExitConfirm = true
+                    }
+
+                    if (showExitConfirm) {
+                        AlertDialog(
+                            onDismissRequest = { showExitConfirm = false },
+                            title = { Text(stringResource(R.string.exit_confirm_title)) },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    showExitConfirm = false
+                                    activity.finish()
+                                }) { Text(stringResource(R.string.common_yes)) }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showExitConfirm = false }) {
+                                    Text(stringResource(R.string.common_no))
+                                }
+                            }
+                        )
                     }
 
                     AnimatedContent(

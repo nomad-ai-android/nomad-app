@@ -72,6 +72,10 @@
 
     <string name="common_cancel">취소</string>
     <string name="common_delete">삭제</string>
+    <string name="common_yes">예</string>
+    <string name="common_no">아니오</string>
+
+    <string name="exit_confirm_title">종료할까요?</string>
 
     <string name="settings_legal_section">법적 고지</string>
     <string name="settings_privacy_policy">개인정보처리방침</string>

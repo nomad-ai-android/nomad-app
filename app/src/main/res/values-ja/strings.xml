@@ -72,6 +72,10 @@
 
     <string name="common_cancel">キャンセル</string>
     <string name="common_delete">削除</string>
+    <string name="common_yes">はい</string>
+    <string name="common_no">いいえ</string>
+
+    <string name="exit_confirm_title">終了しますか？</string>
 
     <string name="settings_legal_section">法的情報</string>
     <string name="settings_privacy_policy">プライバシーポリシー</string>

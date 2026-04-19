@@ -43,6 +43,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -95,8 +96,8 @@ fun SettingsScreen(
 
     var confirmClear by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<ModelEntry?>(null) }
-    var languageExpanded by remember { mutableStateOf(false) }
-    var modelsExpanded by remember { mutableStateOf(false) }
+    var languageExpanded by rememberSaveable { mutableStateOf(false) }
+    var modelsExpanded by rememberSaveable { mutableStateOf(false) }
 
     val updateLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()

@@ -72,6 +72,10 @@
 
     <string name="common_cancel">Cancel</string>
     <string name="common_delete">Delete</string>
+    <string name="common_yes">Yes</string>
+    <string name="common_no">No</string>
+
+    <string name="exit_confirm_title">Exit?</string>
 
     <string name="settings_legal_section">Legal</string>
     <string name="settings_privacy_policy">Privacy Policy</string>

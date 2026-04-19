@@ -72,6 +72,10 @@
 
     <string name="common_cancel">取消</string>
     <string name="common_delete">删除</string>
+    <string name="common_yes">是</string>
+    <string name="common_no">否</string>
+
+    <string name="exit_confirm_title">要退出吗？</string>
 
     <string name="settings_legal_section">法律信息</string>
     <string name="settings_privacy_policy">隐私政策</string>

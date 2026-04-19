@@ -82,9 +82,10 @@ class ToolRouter(
         }
 
         val post = postProcess(lastCumulative)
-        // When the user asked about time, ignore any spurious tool tags
-        // the model may have hallucinated (e.g. CURRENCY).
-        val suppressTools = baseTag == "local_time"
+        // Suppress hallucinated tags in paths where they should never apply:
+        //  - local_time: user asked about time
+        //  - menu_translate: OCR block present, this is a menu translation
+        val suppressTools = baseTag == "local_time" || baseTag == "menu_translate"
         val finalTag = if (suppressTools) baseTag else (post.toolTag ?: baseTag)
         emit(
             StreamEvent.Complete(

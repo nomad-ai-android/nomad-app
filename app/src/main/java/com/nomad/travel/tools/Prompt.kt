@@ -41,11 +41,24 @@ object Prompt {
             "<EXPENSE amount=\"N\" currency=\"ISO\" category=\"food|transport|stay|misc\" note=\"SHORT\">\n" +
             "  When: user logs money they already spent (\"점심 만원 썼어\", \"paid 20 USD for taxi\").\n" +
             "\n" +
-            "<CURRENCY amount=\"N\" from=\"ISO\" to=\"ISO\">  — 3-letter codes.\n" +
-            "  When: user EXPLICITLY asks to convert money or check an FX rate " +
-            "(\"100달러 원화로?\", \"엔 환율\", \"convert 50 USD to EUR\"). " +
-            "Do NOT compute the number — the app does. " +
-            "Not for expense logging, price mentions, or general chat.\n" +
+            "<CURRENCY amount=\"N\" from=\"ISO\" to=\"ISO\">  — 3-letter ISO codes " +
+            "(KRW, USD, JPY, EUR, CNY, VND, THB, TWD, HKD, SGD, GBP, ...).\n" +
+            "  MUST emit when the user asks ANY of: convert an amount between currencies, " +
+            "check a current/today's FX rate, ask how much one currency is in another, " +
+            "or simply mentions a currency word ('환율', 'rate', '시세') with two currencies. " +
+            "Examples that MUST trigger: '100달러 원화로?', '엔 환율 알려줘', '1달러 얼마야', " +
+            "'원 대 엔 환율', '달러 원화 환율 알려줘', '엔화 1만엔 원화로', " +
+            "'현재 환율', '지금 환율', 'convert 50 USD to EUR', 'JPY to KRW rate', " +
+            "'how much is 100 dollars in won'.\n" +
+            "  Language → ISO mapping (learn these): 원/원화/won=KRW, 달러/USD/dollar=USD, " +
+            "엔/엔화/JPY/yen=JPY, 유로/euro=EUR, 위안/元/yuan/CNY=CNY, 동/VND/dong=VND, " +
+            "바트/THB/baht=THB, 파운드/GBP=GBP. If the user only names one currency " +
+            "(e.g. '엔 환율'), pick the UI language's currency as the counter side " +
+            "(ko→KRW, en→USD, ja→JPY, zh→CNY).\n" +
+            "  If no explicit amount is given, use amount=\"1\".\n" +
+            "  Do NOT compute the converted number — the app looks it up. " +
+            "Reply with one short natural sentence (\"환율을 확인할게요.\") then the tag. " +
+            "Not for expense logging of money already spent.\n" +
             "\n" +
             "<ASK prompt=\"Q\" options=\"A|B|C\">\n" +
             "  When: you truly cannot continue without the user choosing among 2-4 mutually " +
@@ -76,8 +89,15 @@ object Prompt {
             "Lang inference: src = user's UI language; tgt = the other person's language " +
             "(베트남 사람=vi, 일본인=ja, 중국인=zh, 미국인=en, 스페인 사람=es).\n" +
             "\n" +
-            "MENU OCR: when the user message contains a [MENU OCR] block, list each item as " +
-            "\"original · translation · 1-line note\" in plain prose. NO tag."
+            "MENU OCR (HIGHEST PRIORITY): if the user message contains a [MENU OCR] block, " +
+            "you are translating a photographed restaurant menu. List each item as " +
+            "\"original · translation · 1-line note\" in plain prose. " +
+            "Do NOT emit any tag in this case — not TRANSLATE, not INTERPRET, not CURRENCY. " +
+            "This overrides every other rule above.\n" +
+            "\n" +
+            "MENU without image: if the user mentions 메뉴/menu/메뉴판 without providing an image, " +
+            "respond as normal chat (plain prose, no tag). Do NOT emit TRANSLATE. " +
+            "Briefly ask them to attach the menu photo if that seems to be their intent."
 
     private const val MID_CONVERSATION_RULE =
         "This is a continuing conversation. Do NOT greet the user, introduce yourself, " +

@@ -36,12 +36,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -325,7 +326,6 @@ private fun ChatScreenBody(
         modifier = Modifier
             .fillMaxSize()
             .statusBarsPadding()
-            .imePadding()
     ) {
         ChatTopBar(onOpenDrawer = onOpenDrawer, onOpenTranslate = onOpenTranslate, onOpenSettings = onOpenSettings)
 
@@ -455,32 +455,38 @@ private fun ChatScreenBody(
 
         }
 
-        PendingActionCard(
-            pending = state.pending,
-            onResolveCurrency = onResolveCurrency,
-            onResolveAsk = onResolveAsk,
-            onResolveTranslate = onResolveTranslate,
-            onResolveInterpret = onResolveInterpret,
-            onDismiss = onDismissPending
-        )
+        Column(
+            modifier = Modifier.windowInsetsPadding(
+                WindowInsets.ime.union(WindowInsets.navigationBars)
+            )
+        ) {
+            PendingActionCard(
+                pending = state.pending,
+                onResolveCurrency = onResolveCurrency,
+                onResolveAsk = onResolveAsk,
+                onResolveTranslate = onResolveTranslate,
+                onResolveInterpret = onResolveInterpret,
+                onDismiss = onDismissPending
+            )
 
-        AttachmentPreview(
-            uri = pendingImage,
-            onClear = onClearPendingImage
-        )
+            AttachmentPreview(
+                uri = pendingImage,
+                onClear = onClearPendingImage
+            )
 
-        InputBar(
-            input = input,
-            onInputChange = onInputChange,
-            isResponding = state.isResponding,
-            isListening = state.isListening,
-            canSend = input.isNotBlank() || pendingImage != null,
-            onCamera = onCamera,
-            onGallery = onGallery,
-            onMic = onMic,
-            onSend = onSend,
-            onCancel = onCancel
-        )
+            InputBar(
+                input = input,
+                onInputChange = onInputChange,
+                isResponding = state.isResponding,
+                isListening = state.isListening,
+                canSend = input.isNotBlank() || pendingImage != null,
+                onCamera = onCamera,
+                onGallery = onGallery,
+                onMic = onMic,
+                onSend = onSend,
+                onCancel = onCancel
+            )
+        }
     }
 }
 
@@ -1114,7 +1120,6 @@ private fun InputBar(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
     ) {
         // Attach menu popup
         AnimatedVisibility(
