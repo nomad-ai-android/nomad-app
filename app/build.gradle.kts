@@ -69,6 +69,14 @@ android {
     androidResources {
         noCompress += listOf("task", "bin", "tflite", "litertlm")
     }
+
+    // Keep all language resources in the base APK so in-app language
+    // switching works after Google Play (AAB) install.
+    bundle {
+        language {
+            enableSplit = false
+        }
+    }
 }
 
 kotlin {
