@@ -14,7 +14,7 @@
     <string name="tool_expense">Expense</string>
     <string name="tool_travel">Travel Info</string>
 
-    <string name="chat_top_status">On-device · Online</string>
+    <string name="chat_top_status">Works offline too</string>
     <string name="chat_empty_title">Where are you headed?</string>
     <string name="chat_empty_body">Translate menus · Find places ·\nTrack expenses · Local tips —\nask me anything.</string>
     <string name="chat_input_placeholder">Type a message…</string>
@@ -62,6 +62,7 @@
     <string name="settings_model_show">Show model list</string>
     <string name="settings_model_hide">Collapse</string>
     <string name="settings_model_help">Tap a card to activate that model. Only downloaded models can be selected.</string>
+    <string name="settings_model_upgrade_link">Upgrade to a smarter AI →</string>
     <string name="settings_chat_section">Chat</string>
     <string name="settings_clear_chats">Clear all chat history</string>
     <string name="settings_clear_confirm_title">Clear all chat history?</string>
@@ -85,14 +86,24 @@
     <string name="language_select_title">Select language</string>
     <string name="language_continue">Continue</string>
 
-    <string name="setup_title">Choose a model</string>
-    <string name="setup_subtitle">Pick the AI model used for offline inference.</string>
-    <string name="setup_start">Start with this model</string>
-    <string name="setup_download_first">Download a model first</string>
+    <string name="setup_title">Prepare the AI</string>
+    <string name="setup_subtitle">Download the AI so the app can answer without the internet.</string>
+    <string name="setup_intro">You only need to download this once. Works offline afterward. Wi-Fi recommended.</string>
+    <string name="setup_start">Get started</string>
+    <string name="setup_download_and_start">Download and start</string>
+    <string name="setup_downloading">Downloading…</string>
+    <string name="setup_download_first">Download is required first</string>
+    <string name="setup_upgrade_title">Upgrade to a smarter AI</string>
+    <string name="setup_upgrade_desc">Available only on high-end devices (8 GB RAM or more). The standard one is plenty for most users.</string>
+    <string name="setup_upgrade_expand">Show upgrade option</string>
+    <string name="setup_upgrade_collapse">Hide</string>
+
+    <string name="model_cancel_confirm_title">Cancel this download?</string>
+    <string name="model_cancel_confirm_body">The progress so far will be lost.</string>
 
     <string name="model_unsupported">Unsupported model</string>
-    <string name="model_blocked_banner">Requires RAM ≥ %1$.0f GB · This device is not supported</string>
-    <string name="model_warn_banner">May run slowly or unstably on devices with less than %1$.0f GB RAM</string>
+    <string name="model_blocked_banner">Not available on this device (%1$.0f GB memory required)</string>
+    <string name="model_warn_banner">May run slowly on devices with less than %1$.0f GB memory</string>
     <string name="model_downloaded">Download complete</string>
     <string name="model_download">Download</string>
     <string name="model_retry">Retry</string>
@@ -106,13 +117,12 @@
     <string name="chat_session_delete_body">Deleted chat history cannot be recovered.</string>
     <string name="chat_session_default_title">New chat</string>
 
-    <string name="settings_context_title">Conversation context</string>
-    <string name="settings_context_drop_oldest">Drop oldest turns</string>
-    <string name="settings_context_drop_oldest_body">When the limit is reached, the oldest turns are removed automatically. (Recommended)</string>
-    <string name="settings_context_reset">Reset</string>
-    <string name="settings_context_reset_body">When the limit is reached, all previous context is cleared and only the current message is used.</string>
-    <string name="settings_context_compact">Compact summary</string>
-    <string name="settings_context_compact_body">Older turns are compressed into a short summary. Uses extra compute.</string>
+    <string name="settings_context_title">Conversation memory</string>
+    <string name="settings_context_change">When a chat gets long…</string>
+    <string name="settings_context_drop_oldest">Forget the oldest parts</string>
+    <string name="settings_context_drop_oldest_body">As the chat grows, the earliest messages are dropped automatically. (Recommended)</string>
+    <string name="settings_context_reset">Start fresh</string>
+    <string name="settings_context_reset_body">When the chat gets too long, all previous messages are cleared and only the current one is kept.</string>
 
     <!-- Translate / Interpret -->
     <string name="translate_title">Translate</string>

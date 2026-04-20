@@ -35,7 +35,7 @@ Mention what you spent in conversation ("lunch was 1200 yen") and NOMAD AI autom
 Open the translator from the top bar and translate any text between 40+ languages. Type or use voice input, and watch the translation stream in real time with a glowing aura animation. Tap the result to copy it, or go full-screen (auto-landscape) to show it to someone.
 
 ### Face-to-Face Interpretation
-
+z
 Split your screen in half for real-time conversation with someone who speaks a different language. Your side is at the bottom; their side is flipped upside-down at the top — just set the phone between you. Both sides have mic input, and translations appear with a glowing border that fades away like smoke when complete. You can also start interpretation directly from chat — say "I need to talk to a Japanese person" and NOMAD AI will open the interpreter with the right language pair pre-selected.
 
 ### Convert Currencies

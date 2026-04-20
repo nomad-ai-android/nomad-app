@@ -14,7 +14,7 @@
     <string name="tool_expense">支出管理</string>
     <string name="tool_travel">旅行情報</string>
 
-    <string name="chat_top_status">オンデバイス · オンライン</string>
+    <string name="chat_top_status">オフラインでも利用可能</string>
     <string name="chat_empty_title">どこへ行きますか？</string>
     <string name="chat_empty_body">メニュー翻訳 · 観光地検索 ·\n為替/支出管理 · 現地情報まで、\n何でも聞いてください。</string>
     <string name="chat_input_placeholder">メッセージを入力…</string>
@@ -62,6 +62,7 @@
     <string name="settings_model_show">モデル一覧を表示</string>
     <string name="settings_model_hide">折りたたむ</string>
     <string name="settings_model_help">カードをタップするとそのモデルが有効になります。ダウンロード済みのモデルのみ選択できます。</string>
+    <string name="settings_model_upgrade_link">より賢い AI にアップグレード →</string>
     <string name="settings_chat_section">チャット</string>
     <string name="settings_clear_chats">チャット履歴をすべて削除</string>
     <string name="settings_clear_confirm_title">すべてのチャット履歴を削除しますか？</string>
@@ -85,14 +86,24 @@
     <string name="language_select_title">言語を選択</string>
     <string name="language_continue">続行</string>
 
-    <string name="setup_title">モデルを選択</string>
-    <string name="setup_subtitle">オフライン推論に使う AI モデルを選択してください。</string>
-    <string name="setup_start">このモデルで開始</string>
-    <string name="setup_download_first">先にモデルをダウンロードしてください</string>
+    <string name="setup_title">AI の準備</string>
+    <string name="setup_subtitle">インターネットなしでも答えられるよう、AI を端末に取り込みます。</string>
+    <string name="setup_intro">一度ダウンロードすればオフラインで使えます。Wi-Fi 接続を推奨。</string>
+    <string name="setup_start">はじめる</string>
+    <string name="setup_download_and_start">ダウンロードして開始</string>
+    <string name="setup_downloading">ダウンロード中…</string>
+    <string name="setup_download_first">まずダウンロードが必要です</string>
+    <string name="setup_upgrade_title">より賢い AI にアップグレード</string>
+    <string name="setup_upgrade_desc">高性能端末（RAM 8 GB 以上）でのみ利用できます。標準版でも十分です。</string>
+    <string name="setup_upgrade_expand">アップグレード版を表示</string>
+    <string name="setup_upgrade_collapse">閉じる</string>
+
+    <string name="model_cancel_confirm_title">ダウンロードを中止しますか？</string>
+    <string name="model_cancel_confirm_body">これまでの進捗は失われます。</string>
 
     <string name="model_unsupported">サポートされていないモデル</string>
-    <string name="model_blocked_banner">RAM %1$.0f GB 以上が必要 · このデバイスは非対応です</string>
-    <string name="model_warn_banner">RAM %1$.0f GB 未満のデバイスでは動作が遅い・不安定になる場合があります</string>
+    <string name="model_blocked_banner">この端末では利用できません（メモリ %1$.0f GB 以上が必要）</string>
+    <string name="model_warn_banner">メモリ %1$.0f GB 未満の端末では少し遅くなることがあります</string>
     <string name="model_downloaded">ダウンロード完了</string>
     <string name="model_download">ダウンロード</string>
     <string name="model_retry">再試行</string>
@@ -106,13 +117,12 @@
     <string name="chat_session_delete_body">削除したチャット履歴は復元できません。</string>
     <string name="chat_session_default_title">新しいチャット</string>
 
-    <string name="settings_context_title">会話コンテキスト</string>
-    <string name="settings_context_drop_oldest">古い会話から削除</string>
-    <string name="settings_context_drop_oldest_body">上限を超えると古い会話から自動的に削除します。（推奨）</string>
-    <string name="settings_context_reset">リセット</string>
-    <string name="settings_context_reset_body">上限を超えると以前のコンテキストをすべてクリアし、現在のメッセージのみ使用します。</string>
-    <string name="settings_context_compact">要約して保持</string>
-    <string name="settings_context_compact_body">古い会話を短い要約に圧縮します。追加の計算が必要です。</string>
+    <string name="settings_context_title">会話の記憶方法</string>
+    <string name="settings_context_change">会話が長くなったら…</string>
+    <string name="settings_context_drop_oldest">古い会話から忘れる</string>
+    <string name="settings_context_drop_oldest_body">会話が長くなると古い部分から自動で忘れます。（推奨）</string>
+    <string name="settings_context_reset">最初からやり直す</string>
+    <string name="settings_context_reset_body">会話が長くなったらこれまでの内容をすべて忘れ、現在の質問だけを使います。</string>
 
     <!-- Translate / Interpret -->
     <string name="translate_title">翻訳</string>

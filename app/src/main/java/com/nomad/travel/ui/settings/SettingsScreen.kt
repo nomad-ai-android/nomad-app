@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nomad.travel.R
+import com.nomad.travel.llm.ModelCatalog
 import com.nomad.travel.llm.ModelEntry
 import com.nomad.travel.tools.ContextStrategy
 import com.nomad.travel.ui.setup.ModelCard
@@ -96,8 +97,10 @@ fun SettingsScreen(
 
     var confirmClear by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<ModelEntry?>(null) }
+    var pendingCancel by remember { mutableStateOf<ModelEntry?>(null) }
     var languageExpanded by rememberSaveable { mutableStateOf(false) }
-    var modelsExpanded by rememberSaveable { mutableStateOf(false) }
+    var showUpgradeDialog by rememberSaveable { mutableStateOf(false) }
+    var contextExpanded by rememberSaveable { mutableStateOf(false) }
 
     val updateLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -209,69 +212,79 @@ fun SettingsScreen(
 
             // ─── Context strategy ─────────────────
             Section(stringResource(R.string.settings_context_title)) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    ContextStrategyRow(
-                        title = stringResource(R.string.settings_context_drop_oldest),
-                        body = stringResource(R.string.settings_context_drop_oldest_body),
-                        selected = state.contextStrategy == ContextStrategy.DROP_OLDEST,
-                        onClick = { vm.setContextStrategy(ContextStrategy.DROP_OLDEST) }
-                    )
-                    ContextStrategyRow(
-                        title = stringResource(R.string.settings_context_reset),
-                        body = stringResource(R.string.settings_context_reset_body),
-                        selected = state.contextStrategy == ContextStrategy.RESET,
-                        onClick = { vm.setContextStrategy(ContextStrategy.RESET) }
-                    )
-                    ContextStrategyRow(
-                        title = stringResource(R.string.settings_context_compact),
-                        body = stringResource(R.string.settings_context_compact_body),
-                        selected = state.contextStrategy == ContextStrategy.COMPACT,
-                        onClick = { vm.setContextStrategy(ContextStrategy.COMPACT) }
-                    )
+                val currentLabel = when (state.contextStrategy) {
+                    ContextStrategy.RESET -> stringResource(R.string.settings_context_reset)
+                    else -> stringResource(R.string.settings_context_drop_oldest)
+                }
+                CollapsibleRow(
+                    leading = {
+                        Column {
+                            Text(
+                                text = stringResource(R.string.settings_context_change),
+                                style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+                            )
+                            Text(
+                                text = currentLabel,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    },
+                    expanded = contextExpanded,
+                    onToggle = { contextExpanded = !contextExpanded }
+                )
+                AnimatedVisibility(visible = contextExpanded) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 10.dp)
+                    ) {
+                        ContextStrategyRow(
+                            title = stringResource(R.string.settings_context_drop_oldest),
+                            body = stringResource(R.string.settings_context_drop_oldest_body),
+                            selected = state.contextStrategy == ContextStrategy.DROP_OLDEST,
+                            onClick = { vm.setContextStrategy(ContextStrategy.DROP_OLDEST) }
+                        )
+                        ContextStrategyRow(
+                            title = stringResource(R.string.settings_context_reset),
+                            body = stringResource(R.string.settings_context_reset_body),
+                            selected = state.contextStrategy == ContextStrategy.RESET,
+                            onClick = { vm.setContextStrategy(ContextStrategy.RESET) }
+                        )
+                    }
                 }
             }
 
             // ─── Model ────────────────────────────
             Section(stringResource(R.string.settings_model_management)) {
-                val activeRow = state.modelRows.firstOrNull { it.entry.id == state.activeModelId }
-                CollapsibleRow(
-                    leading = {
-                        Column {
-                            Text(
-                                text = stringResource(
-                                    if (modelsExpanded) R.string.settings_model_hide
-                                    else R.string.settings_model_show
-                                ),
-                                style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
-                            )
-                            Text(
-                                text = activeRow?.entry?.displayName ?: "—",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-                    },
-                    expanded = modelsExpanded,
-                    onToggle = { modelsExpanded = !modelsExpanded }
-                )
-                AnimatedVisibility(visible = modelsExpanded) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.padding(top = 12.dp)
+                val primaryRow = state.modelRows.firstOrNull { it.entry.id == ModelCatalog.gemma4E2B.id }
+
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    primaryRow?.let { row ->
+                        ModelCard(
+                            row = row,
+                            active = row.entry.id == state.activeModelId && row.downloaded,
+                            onSelect = { vm.selectModel(row.entry) },
+                            onDownload = { vm.startDownload(row.entry) },
+                            onCancel = { pendingCancel = row.entry },
+                            onDelete = { pendingDelete = row.entry }
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 2.dp),
+                        horizontalArrangement = Arrangement.End
                     ) {
-                        state.modelRows.forEach { row ->
-                            ModelCard(
-                                row = row,
-                                active = row.entry.id == state.activeModelId && row.downloaded,
-                                onSelect = { vm.selectModel(row.entry) },
-                                onDownload = { vm.startDownload(row.entry) },
-                                onCancel = { vm.cancelDownload(row.entry) },
-                                onDelete = { pendingDelete = row.entry }
-                            )
-                        }
                         Text(
-                            text = stringResource(R.string.settings_model_help),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = NomadMuted
+                            text = stringResource(R.string.settings_model_upgrade_link),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                color = NomadGlow,
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { showUpgradeDialog = true }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
                         )
                     }
                 }
@@ -389,6 +402,68 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+            containerColor = NomadInputField,
+            titleContentColor = NomadSilver,
+            textContentColor = NomadMist
+        )
+    }
+
+    pendingCancel?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { pendingCancel = null },
+            title = { Text(stringResource(R.string.model_cancel_confirm_title)) },
+            text = { Text(stringResource(R.string.model_cancel_confirm_body)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.cancelDownload(entry)
+                    pendingCancel = null
+                }) { Text(stringResource(R.string.common_yes)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingCancel = null }) {
+                    Text(stringResource(R.string.common_no))
+                }
+            },
+            containerColor = NomadInputField,
+            titleContentColor = NomadSilver,
+            textContentColor = NomadMist
+        )
+    }
+
+    if (showUpgradeDialog) {
+        val upgradeRow = state.modelRows.firstOrNull { it.entry.id == ModelCatalog.gemma4E4B.id }
+        AlertDialog(
+            onDismissRequest = { showUpgradeDialog = false },
+            title = { Text(stringResource(R.string.setup_upgrade_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = stringResource(R.string.setup_upgrade_desc),
+                        style = MaterialTheme.typography.bodySmall.copy(color = NomadMist)
+                    )
+                    upgradeRow?.let { row ->
+                        ModelCard(
+                            row = row,
+                            active = row.entry.id == state.activeModelId && row.downloaded,
+                            onSelect = { vm.selectModel(row.entry) },
+                            onDownload = { vm.startDownload(row.entry) },
+                            onCancel = {
+                                showUpgradeDialog = false
+                                pendingCancel = row.entry
+                            },
+                            onDelete = {
+                                showUpgradeDialog = false
+                                pendingDelete = row.entry
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showUpgradeDialog = false }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },

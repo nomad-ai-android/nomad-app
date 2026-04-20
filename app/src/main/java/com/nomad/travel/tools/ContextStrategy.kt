@@ -14,7 +14,7 @@ enum class ContextStrategy {
     companion object {
         fun from(raw: String?): ContextStrategy = when (raw?.lowercase()) {
             "reset" -> RESET
-            "compact" -> COMPACT
+            // "compact" legacy value maps to DROP_OLDEST (COMPACT removed from UI)
             else -> DROP_OLDEST
         }
 

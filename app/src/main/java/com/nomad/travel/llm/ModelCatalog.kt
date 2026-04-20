@@ -23,27 +23,27 @@ object ModelCatalog {
 
     val gemma4E2B = ModelEntry(
         id = "gemma-4-e2b",
-        displayName = "Gemma 4 E2B-it",
-        shortName = "Gemma 4 · 2B",
+        displayName = "기본형 · Gemma 2B",
+        shortName = "기본형",
         sizeBytes = 2_580_000_000L,
         url = "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm",
         fileName = "gemma-4-E2B-it.litertlm",
         recommended = true,
-        tagline = "모든 기기 권장 · 빠른 응답 · 균형잡힌 품질",
-        badges = listOf("추천", "2.4 GB", "저전력"),
+        tagline = "대부분의 기기에서 빠르고 안정적으로 작동해요",
+        badges = listOf("추천", "2.4 GB", "빠름"),
         minRamBytes = 4L * GB,
         warnRamBytes = 6L * GB
     )
 
     val gemma4E4B = ModelEntry(
         id = "gemma-4-e4b",
-        displayName = "Gemma 4 E4B-it",
-        shortName = "Gemma 4 · 4B",
+        displayName = "고급형 · Gemma 4B",
+        shortName = "고급형",
         sizeBytes = 3_654_467_584L,
         url = "https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm",
         fileName = "gemma-4-E4B-it.litertlm",
         recommended = false,
-        tagline = "고사양 기기 · 더 나은 추론 품질 · 긴 맥락에 강함",
+        tagline = "더 섬세하고 정확한 답변을 원할 때 좋아요",
         badges = listOf("3.4 GB", "고성능"),
         minRamBytes = 8L * GB,
         warnRamBytes = 12L * GB

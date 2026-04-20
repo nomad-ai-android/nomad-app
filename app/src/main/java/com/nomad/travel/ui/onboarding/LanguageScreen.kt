@@ -35,10 +35,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.Image
@@ -47,6 +48,9 @@ import com.nomad.travel.ui.theme.NomadGlow
 import com.nomad.travel.ui.theme.NomadMist
 import com.nomad.travel.ui.theme.NomadRoyal
 import com.nomad.travel.ui.theme.NomadSilver
+
+private const val PRIVACY_POLICY_URL = "https://nomad-ai-android.github.io/privacy.html"
+private const val TERMS_OF_SERVICE_URL = "https://nomad-ai-android.github.io/terms.html"
 
 data class LanguageOption(
     val code: String,
@@ -149,6 +153,46 @@ fun LanguageScreen(
         }
 
         Spacer(Modifier.height(12.dp))
+
+        LegalFooter()
+
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
+private fun LegalFooter() {
+    val uriHandler = LocalUriHandler.current
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.settings_terms_of_service),
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = NomadMist,
+                textDecoration = TextDecoration.Underline
+            ),
+            modifier = Modifier
+                .clickable { uriHandler.openUri(TERMS_OF_SERVICE_URL) }
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        )
+        Text(
+            text = "·",
+            style = MaterialTheme.typography.labelSmall.copy(color = NomadMist),
+            modifier = Modifier.padding(horizontal = 2.dp)
+        )
+        Text(
+            text = stringResource(R.string.settings_privacy_policy),
+            style = MaterialTheme.typography.labelSmall.copy(
+                color = NomadMist,
+                textDecoration = TextDecoration.Underline
+            ),
+            modifier = Modifier
+                .clickable { uriHandler.openUri(PRIVACY_POLICY_URL) }
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        )
     }
 }
 

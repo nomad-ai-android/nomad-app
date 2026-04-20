@@ -13,11 +13,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
@@ -30,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -365,4 +368,50 @@ private fun formatMB(done: Long, total: Long): String {
 private fun formatBytes(bytes: Long): String {
     val gb = bytes / 1_000_000_000.0
     return String.format(Locale.US, "%.1f GB", gb)
+}
+
+@Composable
+fun UpgradeSection(
+    expanded: Boolean,
+    onToggle: () -> Unit
+) {
+    val rotation by animateFloatAsState(if (expanded) 180f else 0f, label = "upg")
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+            .clickable(onClick = onToggle)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.setup_upgrade_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.size(2.dp))
+                Text(
+                    text = stringResource(R.string.setup_upgrade_desc),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        color = NomadMist,
+                        lineHeight = 16.sp
+                    )
+                )
+            }
+            Icon(
+                Icons.Default.ExpandMore,
+                contentDescription = stringResource(
+                    if (expanded) R.string.setup_upgrade_collapse
+                    else R.string.setup_upgrade_expand
+                ),
+                tint = NomadGlow,
+                modifier = Modifier
+                    .size(24.dp)
+                    .rotate(rotation)
+            )
+        }
+    }
 }
