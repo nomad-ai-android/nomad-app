@@ -128,4 +128,7 @@ dependencies {
 
     implementation(libs.play.app.update)
     implementation(libs.play.app.update.ktx)
+
+    implementation(libs.android.install.referrer)
+    implementation(libs.okhttp)
 }

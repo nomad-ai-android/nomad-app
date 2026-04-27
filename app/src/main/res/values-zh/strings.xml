@@ -86,6 +86,9 @@
     <string name="settings_legal_section">法律信息</string>
     <string name="settings_privacy_policy">隐私政策</string>
     <string name="settings_terms_of_service">服务条款</string>
+    <string name="settings_open_source_licenses">开源许可证</string>
+    <string name="licenses_title">开源许可证</string>
+    <string name="licenses_intro">本应用使用以下开源软件和模型。点击任意条目可查看许可证全文。</string>
 
     <string name="language_subtitle">你的旅行 AI 伙伴</string>
     <string name="language_select_title">选择语言</string>

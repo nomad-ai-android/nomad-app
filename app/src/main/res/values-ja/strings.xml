@@ -86,6 +86,9 @@
     <string name="settings_legal_section">法的情報</string>
     <string name="settings_privacy_policy">プライバシーポリシー</string>
     <string name="settings_terms_of_service">利用規約</string>
+    <string name="settings_open_source_licenses">オープンソースライセンス</string>
+    <string name="licenses_title">オープンソースライセンス</string>
+    <string name="licenses_intro">本アプリは以下のオープンソースソフトウェアおよびモデルを使用しています。各項目をタップするとライセンス全文を確認できます。</string>
 
     <string name="language_subtitle">あなたの旅行AIパートナー</string>
     <string name="language_select_title">言語を選択</string>

@@ -86,6 +86,9 @@
     <string name="settings_legal_section">법적 고지</string>
     <string name="settings_privacy_policy">개인정보처리방침</string>
     <string name="settings_terms_of_service">서비스 이용약관</string>
+    <string name="settings_open_source_licenses">오픈소스 라이선스</string>
+    <string name="licenses_title">오픈소스 라이선스</string>
+    <string name="licenses_intro">본 앱은 다음 오픈소스 소프트웨어 및 모델을 사용합니다. 각 항목을 탭하면 라이선스 전문을 확인할 수 있습니다.</string>
 
     <string name="language_subtitle">당신의 여행 AI 동반자</string>
     <string name="language_select_title">언어 선택 / Language</string>

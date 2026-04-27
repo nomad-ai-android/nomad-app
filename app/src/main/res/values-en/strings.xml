@@ -86,6 +86,9 @@
     <string name="settings_legal_section">Legal</string>
     <string name="settings_privacy_policy">Privacy Policy</string>
     <string name="settings_terms_of_service">Terms of Service</string>
+    <string name="settings_open_source_licenses">Open-source licenses</string>
+    <string name="licenses_title">Open-source licenses</string>
+    <string name="licenses_intro">This app uses the following open-source software and models. Tap any item to view its full license text.</string>
 
     <string name="language_subtitle">Your AI travel companion</string>
     <string name="language_select_title">Select language</string>

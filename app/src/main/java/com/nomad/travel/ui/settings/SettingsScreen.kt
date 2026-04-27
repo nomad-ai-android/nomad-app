@@ -28,6 +28,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.AlertDialog
@@ -101,6 +102,12 @@ fun SettingsScreen(
     var languageExpanded by rememberSaveable { mutableStateOf(false) }
     var showUpgradeDialog by rememberSaveable { mutableStateOf(false) }
     var contextExpanded by rememberSaveable { mutableStateOf(false) }
+    var showLicenses by rememberSaveable { mutableStateOf(false) }
+
+    if (showLicenses) {
+        LicensesScreen(onBack = { showLicenses = false })
+        return
+    }
 
     val updateLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartIntentSenderForResult()
@@ -344,6 +351,11 @@ fun SettingsScreen(
                     LegalRow(
                         label = stringResource(R.string.settings_terms_of_service),
                         onClick = { uriHandler.openUri(TERMS_OF_SERVICE_URL) }
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    InternalNavRow(
+                        label = stringResource(R.string.settings_open_source_licenses),
+                        onClick = { showLicenses = true }
                     )
                 }
             }
@@ -798,6 +810,33 @@ private fun LegalRow(label: String, onClick: () -> Unit) {
             contentDescription = null,
             tint = NomadMist,
             modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+@Composable
+private fun InternalNavRow(label: String, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White.copy(alpha = 0.04f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = NomadSilver,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = NomadMist,
+            modifier = Modifier.size(20.dp)
         )
     }
 }
