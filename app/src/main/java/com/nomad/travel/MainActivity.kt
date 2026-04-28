@@ -32,6 +32,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.nomad.travel.R
+import com.nomad.travel.ui.camera.CameraSearchScreen
 import com.nomad.travel.ui.chat.ChatScreen
 import com.nomad.travel.ui.menu.MenuSplitScreen
 import com.nomad.travel.ui.onboarding.LanguageScreen
@@ -45,7 +46,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.util.Locale
 
-private enum class Destination { LANGUAGE, SETUP, CHAT, SETTINGS, MENU_VIEW, TRANSLATE, INTERPRET }
+private enum class Destination { LANGUAGE, SETUP, CHAT, SETTINGS, MENU_VIEW, TRANSLATE, INTERPRET, CAMERA_SEARCH }
 
 private data class MenuViewArgs(val uri: Uri, val text: String)
 
@@ -142,13 +143,30 @@ class MainActivity : ComponentActivity() {
                     var fullscreenText by remember { mutableStateOf<String?>(null) }
                     var showExitConfirm by remember { mutableStateOf(false) }
 
+                    val settingsOriginSaver = remember {
+                        Saver<Destination, String>(
+                            save = { it.name },
+                            restore = {
+                                runCatching { Destination.valueOf(it) }.getOrNull()
+                                    ?: Destination.CHAT
+                            }
+                        )
+                    }
+                    var settingsOrigin by rememberSaveable(stateSaver = settingsOriginSaver) {
+                        mutableStateOf(Destination.CHAT)
+                    }
+
                     BackHandler(
-                        enabled = destination == Destination.SETTINGS ||
-                            destination == Destination.MENU_VIEW ||
+                        enabled = destination == Destination.MENU_VIEW ||
                             destination == Destination.TRANSLATE ||
-                            destination == Destination.INTERPRET
+                            destination == Destination.INTERPRET ||
+                            destination == Destination.CAMERA_SEARCH
                     ) {
                         destination = Destination.CHAT
+                    }
+
+                    BackHandler(enabled = destination == Destination.SETTINGS) {
+                        destination = settingsOrigin
                     }
 
                     BackHandler(enabled = destination == Destination.CHAT) {
@@ -194,16 +212,28 @@ class MainActivity : ComponentActivity() {
                                 onReady = { destination = Destination.CHAT }
                             )
                             Destination.CHAT -> ChatScreen(
-                                onOpenSettings = { destination = Destination.SETTINGS },
+                                onOpenSettings = {
+                                    settingsOrigin = Destination.CHAT
+                                    destination = Destination.SETTINGS
+                                },
                                 onOpenMenuView = { uri, text ->
                                     menuArgs = MenuViewArgs(uri, text)
                                     destination = Destination.MENU_VIEW
                                 },
                                 onOpenTranslate = { destination = Destination.TRANSLATE },
-                                onOpenInterpret = { destination = Destination.INTERPRET }
+                                onOpenInterpret = { destination = Destination.INTERPRET },
+                                onOpenCameraSearch = { destination = Destination.CAMERA_SEARCH }
                             )
                             Destination.SETTINGS -> SettingsScreen(
-                                onBack = { destination = Destination.CHAT }
+                                onBack = { destination = settingsOrigin },
+                                scrollToCameraSection = settingsOrigin == Destination.CAMERA_SEARCH
+                            )
+                            Destination.CAMERA_SEARCH -> CameraSearchScreen(
+                                onBack = { destination = Destination.CHAT },
+                                onOpenSettings = {
+                                    settingsOrigin = Destination.CAMERA_SEARCH
+                                    destination = Destination.SETTINGS
+                                }
                             )
                             Destination.MENU_VIEW -> {
                                 val args = menuArgs

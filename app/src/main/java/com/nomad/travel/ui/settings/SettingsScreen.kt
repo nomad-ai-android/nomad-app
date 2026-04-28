@@ -50,6 +50,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -74,6 +76,7 @@ import com.nomad.travel.ui.theme.NomadRoyal
 import com.nomad.travel.ui.theme.NomadSilver
 import com.nomad.travel.update.UpdateState
 import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.flow.first
 
 private const val PRIVACY_POLICY_URL = "https://nomad-ai-android.github.io/privacy.html"
 private const val TERMS_OF_SERVICE_URL = "https://nomad-ai-android.github.io/terms.html"
@@ -90,6 +93,7 @@ private val LANGS = listOf(
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    scrollToCameraSection: Boolean = false,
     vm: SettingsViewModel = viewModel(factory = SettingsViewModel.Factory)
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -113,6 +117,16 @@ fun SettingsScreen(
         ActivityResultContracts.StartIntentSenderForResult()
     ) { /* Play handles result visually; state flows come from InstallStateUpdatedListener. */ }
 
+    val scrollState = rememberScrollState()
+    var cameraSectionY by remember { mutableStateOf(-1) }
+    LaunchedEffect(scrollToCameraSection) {
+        if (scrollToCameraSection) {
+            val y = androidx.compose.runtime.snapshotFlow { cameraSectionY }
+                .first { it >= 0 }
+            scrollState.animateScrollTo(y)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -123,7 +137,7 @@ fun SettingsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(scrollState)
                 .padding(horizontal = 20.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
@@ -297,6 +311,50 @@ fun SettingsScreen(
                 }
             }
 
+            // ─── Camera search ────────────────────
+            Box(
+                modifier = Modifier.onGloballyPositioned { coords ->
+                    cameraSectionY = coords.boundsInParent().top.toInt()
+                }
+            ) {
+                Section(stringResource(R.string.settings_camera_section)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color.White.copy(alpha = 0.04f))
+                                .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.settings_camera_instant_preview),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = NomadSilver
+                                )
+                                Spacer(Modifier.size(2.dp))
+                                Text(
+                                    text = stringResource(R.string.settings_camera_instant_preview_body),
+                                    style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+                                )
+                            }
+                            Switch(
+                                checked = state.cameraInstantPreview,
+                                onCheckedChange = { vm.setCameraInstantPreview(it) },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = NomadGlow,
+                                    checkedTrackColor = NomadRoyal,
+                                    uncheckedThumbColor = NomadMuted,
+                                    uncheckedTrackColor = NomadMuted.copy(alpha = 0.3f)
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+
             // ─── App version & update ────────────
             Section(stringResource(R.string.settings_app_version)) {
                 Row(
@@ -340,7 +398,7 @@ fun SettingsScreen(
                 )
             }
 
-            // ─── Legal ────────────────────────────
+            // ─── Legal (always last) ───────────────
             Section(stringResource(R.string.settings_legal_section)) {
                 val uriHandler = LocalUriHandler.current
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

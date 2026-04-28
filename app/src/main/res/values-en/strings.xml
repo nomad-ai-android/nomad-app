@@ -90,6 +90,25 @@
     <string name="licenses_title">Open-source licenses</string>
     <string name="licenses_intro">This app uses the following open-source software and models. Tap any item to view its full license text.</string>
 
+    <string name="camera_search_title">Camera Search</string>
+    <string name="camera_search_shutter">Capture &amp; Search</string>
+    <string name="camera_search_queue">Capture queue</string>
+    <string name="camera_search_queue_title">Capture queue</string>
+    <string name="camera_search_queue_empty">No captures yet. Tap the search button to take one.</string>
+    <string name="camera_search_status_pending">Waiting</string>
+    <string name="camera_search_status_processing">Analyzing…</string>
+    <string name="camera_search_status_done">Done</string>
+    <string name="camera_search_status_error">Failed</string>
+    <string name="camera_search_move_up">Move up</string>
+    <string name="camera_search_move_down">Move down</string>
+    <string name="camera_search_grant_permission">Grant camera permission</string>
+    <string name="camera_search_open">Open camera search</string>
+    <string name="camera_search_answer_title">AI answer</string>
+
+    <string name="settings_camera_section">Camera Search</string>
+    <string name="settings_camera_instant_preview">Show answer instantly after capture</string>
+    <string name="settings_camera_instant_preview_body">When you take a photo, it opens fullscreen immediately and you can watch the answer being generated in real time.</string>
+
     <string name="language_subtitle">Your AI travel companion</string>
     <string name="language_select_title">Select language</string>
     <string name="language_continue">Continue</string>
@@ -146,6 +165,7 @@
     <string name="translate_mic">Voice input</string>
     <string name="translate_clear">Clear</string>
     <string name="translate_copy">Copy</string>
+    <string name="translate_speak">Speak</string>
     <string name="translate_copied">Copied to clipboard</string>
     <string name="translate_fullscreen">Full screen</string>
     <string name="interpret_title">Face-to-Face</string>

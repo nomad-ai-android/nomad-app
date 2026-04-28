@@ -59,6 +59,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.filled.Settings
@@ -133,6 +134,7 @@ fun ChatScreen(
     onOpenMenuView: (Uri, String) -> Unit = { _, _ -> },
     onOpenTranslate: () -> Unit = {},
     onOpenInterpret: () -> Unit = {},
+    onOpenCameraSearch: () -> Unit = {},
     vm: ChatViewModel = viewModel(factory = ChatViewModel.Factory)
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -206,6 +208,7 @@ fun ChatScreen(
             onOpenSettings = onOpenSettings,
             onOpenDrawer = { scope.launch { drawerState.open() } },
             onOpenTranslate = { showTranslateSheet = true },
+            onOpenCameraSearch = onOpenCameraSearch,
             onSend = {
                 vm.send(context, input, pendingImage)
                 input = ""
@@ -299,6 +302,7 @@ private fun ChatScreenBody(
     onOpenSettings: () -> Unit,
     onOpenDrawer: () -> Unit,
     onOpenTranslate: () -> Unit,
+    onOpenCameraSearch: () -> Unit,
     onSend: () -> Unit,
     onCancel: () -> Unit,
     onCamera: () -> Unit,
@@ -314,7 +318,12 @@ private fun ChatScreenBody(
             .fillMaxSize()
             .statusBarsPadding()
     ) {
-        ChatTopBar(onOpenDrawer = onOpenDrawer, onOpenTranslate = onOpenTranslate, onOpenSettings = onOpenSettings)
+        ChatTopBar(
+            onOpenDrawer = onOpenDrawer,
+            onOpenCameraSearch = onOpenCameraSearch,
+            onOpenTranslate = onOpenTranslate,
+            onOpenSettings = onOpenSettings
+        )
 
         val listState = rememberLazyListState()
         var autoScroll by remember { mutableStateOf(true) }
@@ -572,7 +581,12 @@ private fun SessionDrawerContent(
 }
 
 @Composable
-private fun ChatTopBar(onOpenDrawer: () -> Unit, onOpenTranslate: () -> Unit, onOpenSettings: () -> Unit) {
+private fun ChatTopBar(
+    onOpenDrawer: () -> Unit,
+    onOpenCameraSearch: () -> Unit,
+    onOpenTranslate: () -> Unit,
+    onOpenSettings: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -615,6 +629,22 @@ private fun ChatTopBar(onOpenDrawer: () -> Unit, onOpenTranslate: () -> Unit, on
                 )
             }
         }
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.06f))
+                .clickable(onClick = onOpenCameraSearch),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Outlined.CameraAlt,
+                contentDescription = stringResource(R.string.camera_search_open),
+                tint = NomadMist,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+        Spacer(Modifier.size(8.dp))
         Box(
             modifier = Modifier
                 .size(40.dp)

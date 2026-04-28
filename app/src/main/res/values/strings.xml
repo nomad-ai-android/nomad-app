@@ -90,6 +90,25 @@
     <string name="licenses_title">오픈소스 라이선스</string>
     <string name="licenses_intro">본 앱은 다음 오픈소스 소프트웨어 및 모델을 사용합니다. 각 항목을 탭하면 라이선스 전문을 확인할 수 있습니다.</string>
 
+    <string name="camera_search_title">카메라 검색</string>
+    <string name="camera_search_shutter">검색 촬영</string>
+    <string name="camera_search_queue">촬영 큐</string>
+    <string name="camera_search_queue_title">촬영 큐</string>
+    <string name="camera_search_queue_empty">아직 촬영된 사진이 없어요. 검색 버튼을 눌러 촬영해 보세요.</string>
+    <string name="camera_search_status_pending">대기중</string>
+    <string name="camera_search_status_processing">분석중…</string>
+    <string name="camera_search_status_done">완료</string>
+    <string name="camera_search_status_error">실패</string>
+    <string name="camera_search_move_up">위로 이동</string>
+    <string name="camera_search_move_down">아래로 이동</string>
+    <string name="camera_search_grant_permission">카메라 권한 허용</string>
+    <string name="camera_search_open">카메라 검색 열기</string>
+    <string name="camera_search_answer_title">AI 답변</string>
+
+    <string name="settings_camera_section">카메라 검색</string>
+    <string name="settings_camera_instant_preview">촬영하고 즉시 답변 보기</string>
+    <string name="settings_camera_instant_preview_body">사진을 촬영하면 그 사진이 바로 전체화면으로 열리고, 답변이 생성되는 모습을 실시간으로 볼 수 있어요.</string>
+
     <string name="language_subtitle">당신의 여행 AI 동반자</string>
     <string name="language_select_title">언어 선택 / Language</string>
     <string name="language_continue">계속 / Continue</string>
@@ -146,6 +165,7 @@
     <string name="translate_mic">음성 입력</string>
     <string name="translate_clear">지우기</string>
     <string name="translate_copy">복사</string>
+    <string name="translate_speak">읽어주기</string>
     <string name="translate_copied">클립보드에 복사되었습니다</string>
     <string name="translate_fullscreen">전체 화면</string>
     <string name="interpret_title">대면 통역</string>

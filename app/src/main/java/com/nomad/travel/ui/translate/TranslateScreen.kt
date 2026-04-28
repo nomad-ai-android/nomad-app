@@ -57,6 +57,7 @@ import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -312,6 +313,14 @@ fun TranslateScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    SmallActionButton(onClick = { vm.speakTranslation() }) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = stringResource(R.string.translate_speak),
+                            tint = NomadMist,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                     SmallActionButton(onClick = {
                         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         clipboard.setPrimaryClip(ClipData.newPlainText("translation", state.translatedText))

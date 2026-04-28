@@ -90,6 +90,25 @@
     <string name="licenses_title">オープンソースライセンス</string>
     <string name="licenses_intro">本アプリは以下のオープンソースソフトウェアおよびモデルを使用しています。各項目をタップするとライセンス全文を確認できます。</string>
 
+    <string name="camera_search_title">カメラ検索</string>
+    <string name="camera_search_shutter">撮影して検索</string>
+    <string name="camera_search_queue">撮影キュー</string>
+    <string name="camera_search_queue_title">撮影キュー</string>
+    <string name="camera_search_queue_empty">まだ撮影された写真がありません。検索ボタンをタップして撮影してみてください。</string>
+    <string name="camera_search_status_pending">待機中</string>
+    <string name="camera_search_status_processing">分析中…</string>
+    <string name="camera_search_status_done">完了</string>
+    <string name="camera_search_status_error">失敗</string>
+    <string name="camera_search_move_up">上に移動</string>
+    <string name="camera_search_move_down">下に移動</string>
+    <string name="camera_search_grant_permission">カメラ権限を許可</string>
+    <string name="camera_search_open">カメラ検索を開く</string>
+    <string name="camera_search_answer_title">AI の回答</string>
+
+    <string name="settings_camera_section">カメラ検索</string>
+    <string name="settings_camera_instant_preview">撮影後すぐに回答を見る</string>
+    <string name="settings_camera_instant_preview_body">撮影するとその写真が即座にフルスクリーンで開き、回答が生成される様子をリアルタイムで確認できます。</string>
+
     <string name="language_subtitle">あなたの旅行AIパートナー</string>
     <string name="language_select_title">言語を選択</string>
     <string name="language_continue">続行</string>
@@ -146,6 +165,7 @@
     <string name="translate_mic">音声入力</string>
     <string name="translate_clear">クリア</string>
     <string name="translate_copy">コピー</string>
+    <string name="translate_speak">読み上げ</string>
     <string name="translate_copied">クリップボードにコピーしました</string>
     <string name="translate_fullscreen">全画面表示</string>
     <string name="interpret_title">対面通訳</string>

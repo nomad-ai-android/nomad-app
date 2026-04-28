@@ -32,6 +32,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.outlined.Mic
@@ -136,33 +137,56 @@ fun InterpretScreen(
                             fontWeight = FontWeight.Bold
                         )
                     )
-                    // Partner mic button
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (state.isTheirMicActive) NomadGlow.copy(alpha = 0.2f)
-                                else Color.White.copy(alpha = 0.08f)
-                            )
-                            .clickable {
-                                if (state.isTheirMicActive) {
-                                    vm.stopListening()
-                                } else {
-                                    val granted = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
-                                        PackageManager.PERMISSION_GRANTED
-                                    if (granted) vm.startListening(TranslateViewModel.SttTarget.INTERPRET_PARTNER)
-                                    else partnerMicPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                }
-                            },
-                        contentAlignment = Alignment.Center
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(
-                            imageVector = if (state.isTheirMicActive) Icons.Outlined.Mic else Icons.Default.Mic,
-                            contentDescription = stringResource(R.string.translate_mic),
-                            tint = if (state.isTheirMicActive) NomadGlow else NomadMist,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        // Speak button (reads the translation in partner's language)
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.08f))
+                                .clickable(enabled = state.theirDisplayText.isNotBlank() && !state.isTheirAreaTranslating) {
+                                    vm.speakTheirDisplay()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                                contentDescription = stringResource(R.string.translate_speak),
+                                tint = if (state.theirDisplayText.isNotBlank() && !state.isTheirAreaTranslating) NomadMist else NomadMuted,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        // Partner mic button
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(
+                                    if (state.isTheirMicActive) NomadGlow.copy(alpha = 0.2f)
+                                    else Color.White.copy(alpha = 0.08f)
+                                )
+                                .clickable {
+                                    if (state.isTheirMicActive) {
+                                        vm.stopListening()
+                                    } else {
+                                        val granted = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                                            PackageManager.PERMISSION_GRANTED
+                                        if (granted) vm.startListening(TranslateViewModel.SttTarget.INTERPRET_PARTNER)
+                                        else partnerMicPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                    }
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (state.isTheirMicActive) Icons.Outlined.Mic else Icons.Default.Mic,
+                                contentDescription = stringResource(R.string.translate_mic),
+                                tint = if (state.isTheirMicActive) NomadGlow else NomadMist,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
 
@@ -315,6 +339,25 @@ fun InterpretScreen(
                         )
                     )
                     Spacer(Modifier.weight(1f))
+                    // Speak button (reads the translation in my language)
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.06f))
+                            .clickable(enabled = state.myDisplayText.isNotBlank() && !state.isMyAreaTranslating) {
+                                vm.speakMyDisplay()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
+                            contentDescription = stringResource(R.string.translate_speak),
+                            tint = if (state.myDisplayText.isNotBlank() && !state.isMyAreaTranslating) NomadMist else NomadMuted,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(Modifier.size(8.dp))
                     // Back button
                     Box(
                         modifier = Modifier

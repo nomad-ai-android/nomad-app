@@ -90,6 +90,25 @@
     <string name="licenses_title">开源许可证</string>
     <string name="licenses_intro">本应用使用以下开源软件和模型。点击任意条目可查看许可证全文。</string>
 
+    <string name="camera_search_title">相机搜索</string>
+    <string name="camera_search_shutter">拍摄并搜索</string>
+    <string name="camera_search_queue">拍摄队列</string>
+    <string name="camera_search_queue_title">拍摄队列</string>
+    <string name="camera_search_queue_empty">还没有照片。点击搜索按钮开始拍摄吧。</string>
+    <string name="camera_search_status_pending">等待中</string>
+    <string name="camera_search_status_processing">分析中…</string>
+    <string name="camera_search_status_done">完成</string>
+    <string name="camera_search_status_error">失败</string>
+    <string name="camera_search_move_up">上移</string>
+    <string name="camera_search_move_down">下移</string>
+    <string name="camera_search_grant_permission">允许相机权限</string>
+    <string name="camera_search_open">打开相机搜索</string>
+    <string name="camera_search_answer_title">AI 回答</string>
+
+    <string name="settings_camera_section">相机搜索</string>
+    <string name="settings_camera_instant_preview">拍摄后立即查看回答</string>
+    <string name="settings_camera_instant_preview_body">拍照后会立即全屏显示该照片，您可以实时观看回答的生成。</string>
+
     <string name="language_subtitle">你的旅行 AI 伙伴</string>
     <string name="language_select_title">选择语言</string>
     <string name="language_continue">继续</string>
@@ -146,6 +165,7 @@
     <string name="translate_mic">语音输入</string>
     <string name="translate_clear">清除</string>
     <string name="translate_copy">复制</string>
+    <string name="translate_speak">朗读</string>
     <string name="translate_copied">已复制到剪贴板</string>
     <string name="translate_fullscreen">全屏显示</string>
     <string name="interpret_title">面对面口译</string>

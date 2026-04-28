@@ -35,7 +35,8 @@ data class SettingsUiState(
     val contextStrategy: ContextStrategy = ContextStrategy.DROP_OLDEST,
     val updateState: UpdateState = UpdateState.Idle,
     val currentVersion: String = BuildConfig.VERSION_NAME,
-    val autoUpdateCheck: Boolean = true
+    val autoUpdateCheck: Boolean = true,
+    val cameraInstantPreview: Boolean = false
 )
 
 class SettingsViewModel(
@@ -58,9 +59,10 @@ class SettingsViewModel(
             prefs.language,
             prefs.systemPrompt,
             prefs.activeModelId,
-            prefs.contextStrategy
-        ) { lang, prompt, activeId, strategy ->
-            listOf(lang, prompt, activeId, strategy)
+            prefs.contextStrategy,
+            prefs.cameraInstantPreview
+        ) { lang, prompt, activeId, strategy, cameraInstant ->
+            listOf(lang, prompt, activeId, strategy, cameraInstant)
         },
         statusesFlow,
         refreshTick,
@@ -71,6 +73,7 @@ class SettingsViewModel(
         val prompt = base[1] as String?
         val activeId = base[2] as String?
         val strategy = base[3] as String?
+        val cameraInstant = base[4] as Boolean
         val rows = ModelCatalog.all.mapIndexed { i, entry ->
             ModelRow(
                 entry = entry,
@@ -87,7 +90,8 @@ class SettingsViewModel(
             modelRows = rows,
             contextStrategy = ContextStrategy.from(strategy),
             updateState = uState,
-            autoUpdateCheck = autoUpdate
+            autoUpdateCheck = autoUpdate,
+            cameraInstantPreview = cameraInstant
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
 
@@ -101,6 +105,10 @@ class SettingsViewModel(
 
     fun setAutoUpdateCheck(enabled: Boolean) {
         viewModelScope.launch { prefs.setAutoUpdateCheck(enabled) }
+    }
+
+    fun setCameraInstantPreview(enabled: Boolean) {
+        viewModelScope.launch { prefs.setCameraInstantPreview(enabled) }
     }
 
     fun resetSystemPrompt() {

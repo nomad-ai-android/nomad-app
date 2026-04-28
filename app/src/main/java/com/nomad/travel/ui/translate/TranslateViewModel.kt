@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.nomad.travel.NomadApp
 import com.nomad.travel.llm.GemmaEngine
+import com.nomad.travel.tts.TtsService
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -116,6 +117,7 @@ data class InterpretUiState(
 
 class TranslateViewModel(
     private val gemma: GemmaEngine,
+    private val tts: TtsService,
     private val app: Application
 ) : ViewModel() {
 
@@ -190,8 +192,30 @@ class TranslateViewModel(
         _translate.update { it.copy(isTranslating = false) }
     }
 
-    fun clearTranslate() =
+    fun clearTranslate() {
+        tts.stop()
         _translate.update { it.copy(sourceText = "", translatedText = "", pronunciation = "") }
+    }
+
+    fun speakTranslation() {
+        val s = _translate.value
+        if (s.isTranslating || s.translatedText.isBlank()) return
+        tts.speak(s.translatedText, s.targetLanguage.code)
+    }
+
+    fun speakMyDisplay() {
+        val s = _interpret.value
+        if (s.isMyAreaTranslating || s.myDisplayText.isBlank()) return
+        tts.speak(s.myDisplayText, s.myLanguage.code)
+    }
+
+    fun speakTheirDisplay() {
+        val s = _interpret.value
+        if (s.isTheirAreaTranslating || s.theirDisplayText.isBlank()) return
+        tts.speak(s.theirDisplayText, s.theirLanguage.code)
+    }
+
+    fun stopSpeaking() = tts.stop()
 
     /** Pre-set languages from chat tool tag navigation */
     fun presetTranslateLanguages(srcCode: String, tgtCode: String) {
@@ -283,8 +307,10 @@ class TranslateViewModel(
         }
     }
 
-    fun clearInterpret() =
+    fun clearInterpret() {
+        tts.stop()
         _interpret.update { it.copy(myDisplayText = "", theirDisplayText = "", myInput = "") }
+    }
 
     /* ── STT (shared) ── */
 
@@ -377,6 +403,7 @@ class TranslateViewModel(
         speechRecognizer?.destroy()
         translateJob?.cancel()
         interpretJob?.cancel()
+        tts.stop()
     }
 
     /* ── Prompt ── */
@@ -424,6 +451,7 @@ Rules:
                 val app = extras[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY] as NomadApp
                 return TranslateViewModel(
                     gemma = app.container.gemma,
+                    tts = app.container.tts,
                     app = app
                 ) as T
             }

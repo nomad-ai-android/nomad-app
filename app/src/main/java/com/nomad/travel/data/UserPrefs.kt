@@ -20,6 +20,7 @@ class UserPrefs(private val context: Context) {
     private val KEY_CONTEXT_STRATEGY = stringPreferencesKey("context_strategy")
     private val KEY_LAST_SESSION_ID = longPreferencesKey("last_session_id")
     private val KEY_AUTO_UPDATE_CHECK = booleanPreferencesKey("auto_update_check")
+    private val KEY_CAMERA_INSTANT_PREVIEW = booleanPreferencesKey("camera_instant_preview")
 
     val language: Flow<String?> = context.dataStore.data.map { it[KEY_LANGUAGE] }
     val autoUpdateCheck: Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTO_UPDATE_CHECK] != false }
@@ -27,6 +28,7 @@ class UserPrefs(private val context: Context) {
     val systemPrompt: Flow<String?> = context.dataStore.data.map { it[KEY_SYSTEM_PROMPT] }
     val contextStrategy: Flow<String?> = context.dataStore.data.map { it[KEY_CONTEXT_STRATEGY] }
     val lastSessionId: Flow<Long?> = context.dataStore.data.map { it[KEY_LAST_SESSION_ID] }
+    val cameraInstantPreview: Flow<Boolean> = context.dataStore.data.map { it[KEY_CAMERA_INSTANT_PREVIEW] == true }
 
     suspend fun languageBlocking(): String? = language.first()
     suspend fun activeModelIdBlocking(): String? = activeModelId.first()
@@ -59,5 +61,12 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setAutoUpdateCheck(enabled: Boolean) {
         context.dataStore.edit { it[KEY_AUTO_UPDATE_CHECK] = enabled }
+    }
+
+    suspend fun cameraInstantPreviewBlocking(): Boolean =
+        context.dataStore.data.first()[KEY_CAMERA_INSTANT_PREVIEW] == true
+
+    suspend fun setCameraInstantPreview(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_CAMERA_INSTANT_PREVIEW] = enabled }
     }
 }
