@@ -76,7 +76,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -197,8 +196,11 @@ fun CameraSearchScreen(
                     onOpenSettings = onOpenSettings,
                     onShutter = {
                         if (hasPermission) {
+                            // Fire the visual feedback immediately on tap so the
+                            // motion lines up with the user's gesture, not with
+                            // when the JPEG finishes writing to disk.
+                            captureFlashTick++
                             triggerCapture(context, imageCapture) { file ->
-                                captureFlashTick++
                                 vm.enqueueCapture(context, file)
                             }
                         } else {
@@ -222,52 +224,26 @@ fun CameraSearchScreen(
 }
 
 /**
- * Brief side-edge gradient sweep that confirms a successful capture.
- * Plays whenever [trigger] changes (excluding the initial 0 value).
+ * Mechanical-shutter feedback: the screen briefly dims to black like an
+ * iris closing, then snaps back. Driven entirely by [trigger] — increment
+ * it on shutter tap to play the animation. ~180ms total.
  */
 @Composable
 private fun CaptureFlash(trigger: Int) {
-    val alpha = remember { Animatable(0f) }
+    val shutter = remember { Animatable(0f) }
     LaunchedEffect(trigger) {
         if (trigger == 0) return@LaunchedEffect
-        alpha.snapTo(0f)
-        alpha.animateTo(1f, tween(90, easing = LinearEasing))
-        alpha.animateTo(0f, tween(420, easing = FastOutSlowInEasing))
+        shutter.snapTo(0f)
+        shutter.animateTo(0.88f, tween(45, easing = LinearEasing))
+        shutter.animateTo(0f, tween(160, easing = FastOutSlowInEasing))
     }
-    val current = alpha.value
-    if (current <= 0f) return
-    Box(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .fillMaxHeight()
-                .width(96.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            NomadGlow.copy(alpha = 0.85f * current),
-                            NomadRoyal.copy(alpha = 0.35f * current),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .fillMaxHeight()
-                .width(96.dp)
-                .background(
-                    Brush.horizontalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            NomadRoyal.copy(alpha = 0.35f * current),
-                            NomadGlow.copy(alpha = 0.85f * current)
-                        )
-                    )
-                )
-        )
-    }
+    val alpha = shutter.value
+    if (alpha <= 0f) return
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = alpha))
+    )
 }
 
 @Composable

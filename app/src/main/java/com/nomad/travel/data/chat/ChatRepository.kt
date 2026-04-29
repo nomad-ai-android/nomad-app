@@ -1,5 +1,6 @@
 package com.nomad.travel.data.chat
 
+import android.content.Context
 import android.net.Uri
 import com.nomad.travel.data.ChatMessage
 import com.nomad.travel.data.Role
@@ -8,7 +9,8 @@ import kotlinx.coroutines.flow.map
 
 class ChatRepository(
     private val sessionDao: ChatSessionDao,
-    private val messageDao: ChatMessageDao
+    private val messageDao: ChatMessageDao,
+    private val context: Context
 ) {
 
     fun observeSessions(): Flow<List<ChatSessionEntity>> = sessionDao.observeAll()
@@ -30,9 +32,16 @@ class ChatRepository(
 
     suspend fun touchSession(id: Long) = sessionDao.touch(id)
 
-    suspend fun deleteSession(id: Long) = sessionDao.delete(id)
+    suspend fun deleteSession(id: Long) {
+        val orphanedImages = messageDao.forSession(id).mapNotNull { it.imageUri }
+        sessionDao.delete(id)
+        orphanedImages.forEach { ChatImageStore.delete(context, Uri.parse(it)) }
+    }
 
-    suspend fun deleteAllSessions() = sessionDao.deleteAll()
+    suspend fun deleteAllSessions() {
+        sessionDao.deleteAll()
+        ChatImageStore.clearAll(context)
+    }
 
     suspend fun appendMessage(
         sessionId: Long,
@@ -41,12 +50,15 @@ class ChatRepository(
         imageUri: Uri? = null,
         toolTag: String? = null
     ): Long {
+        // Picker / camera URIs aren't stable across restarts — copy into our
+        // managed dir so the message keeps a usable reference forever.
+        val storedUri = imageUri?.let { ChatImageStore.persist(context, it) ?: it }
         val id = messageDao.insert(
             ChatMessageEntity(
                 sessionId = sessionId,
                 role = role.name.lowercase(),
                 text = text,
-                imageUri = imageUri?.toString(),
+                imageUri = storedUri?.toString(),
                 toolTag = toolTag
             )
         )

@@ -23,6 +23,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -40,7 +41,9 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -93,6 +96,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -108,6 +112,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -166,6 +172,7 @@ fun ChatScreen(
     var pendingDeleteSessionId by remember { mutableStateOf<Long?>(null) }
     var sendTick by remember { mutableStateOf(0) }
     var showTranslateSheet by remember { mutableStateOf(false) }
+    var viewerImage by remember { mutableStateOf<Uri?>(null) }
 
     // STT: wire mic results to input field
     vm.onSttResult = { text -> input = text }
@@ -180,7 +187,10 @@ fun ChatScreen(
         drawerContent = {
             ModalDrawerSheet(
                 drawerContainerColor = NomadInputField,
-                drawerContentColor = NomadSilver
+                drawerContentColor = NomadSilver,
+                modifier = Modifier
+                    .fillMaxWidth(0.82f)
+                    .widthIn(max = 320.dp)
             ) {
                 SessionDrawerContent(
                     sessions = state.sessions,
@@ -216,6 +226,7 @@ fun ChatScreen(
             },
             onCancel = { vm.cancelResponse() },
             onOpenMenuView = onOpenMenuView,
+            onImageClick = { viewerImage = it },
             onResolveCurrency = { live -> vm.resolveCurrency(live) },
             onResolveAsk = { option -> vm.resolveAsk(context, option) },
             onDismissPending = { vm.dismissPending() },
@@ -289,6 +300,10 @@ fun ChatScreen(
             }
         )
     }
+
+    viewerImage?.let { uri ->
+        FullScreenImageViewer(uri = uri, onDismiss = { viewerImage = null })
+    }
 }
 
 @Composable
@@ -309,6 +324,7 @@ private fun ChatScreenBody(
     onGallery: () -> Unit,
     onMic: () -> Unit,
     onOpenMenuView: (Uri, String) -> Unit,
+    onImageClick: (Uri) -> Unit,
     onResolveCurrency: (Boolean) -> Unit,
     onResolveAsk: (String) -> Unit,
     onDismissPending: () -> Unit
@@ -446,7 +462,8 @@ private fun ChatScreenBody(
                             MessageRow(
                                 msg = msg,
                                 menuImageUri = priorImageUri,
-                                onOpenMenuView = onOpenMenuView
+                                onOpenMenuView = onOpenMenuView,
+                                onImageClick = onImageClick
                             )
                         }
                     }
@@ -760,7 +777,8 @@ private fun SuggestionChips(
 private fun MessageRow(
     msg: ChatMessage,
     menuImageUri: Uri? = null,
-    onOpenMenuView: (Uri, String) -> Unit = { _, _ -> }
+    onOpenMenuView: (Uri, String) -> Unit = { _, _ -> },
+    onImageClick: (Uri) -> Unit = {}
 ) {
     val isUser = msg.role == Role.USER
     Row(
@@ -777,7 +795,7 @@ private fun MessageRow(
         ) {
             Column(horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
                 if (msg.imageUri != null) {
-                    ImageMessageBubble(msg, isUser)
+                    ImageMessageBubble(msg, isUser, onImageClick)
                 } else if (!(isUser && msg.text.isBlank())) {
                     MessageBubble(msg, isUser)
                 }
@@ -887,7 +905,11 @@ private fun MessageBubble(msg: ChatMessage, isUser: Boolean) {
 }
 
 @Composable
-private fun ImageMessageBubble(msg: ChatMessage, isUser: Boolean) {
+private fun ImageMessageBubble(
+    msg: ChatMessage,
+    isUser: Boolean,
+    onImageClick: (Uri) -> Unit = {}
+) {
     val shape = if (isUser) {
         RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 20.dp, bottomEnd = 4.dp)
     } else {
@@ -898,22 +920,21 @@ private fun ImageMessageBubble(msg: ChatMessage, isUser: Boolean) {
 
     Column(
         modifier = Modifier
+            .width(200.dp)
             .clip(shape)
             .background(bg)
-            .padding(6.dp)
     ) {
         msg.imageUri?.let { uri ->
             AsyncImage(
                 model = uri,
                 contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 200.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .size(200.dp)
+                    .clickable { onImageClick(uri) }
             )
         }
         if (msg.text.isNotBlank()) {
-            Spacer(Modifier.size(6.dp))
             val rendered = remember(msg.text, msg.streaming, isUser) {
                 if (isUser) AnnotatedString(msg.text)
                 else renderMarkdown(text = msg.text, appendCaret = msg.streaming)
@@ -922,10 +943,10 @@ private fun ImageMessageBubble(msg: ChatMessage, isUser: Boolean) {
                 text = rendered,
                 style = MaterialTheme.typography.bodyLarge.copy(
                     color = textColor,
-                    fontSize = 15.sp,
-                    lineHeight = 22.sp
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
                 ),
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
             )
         }
     }
@@ -1480,6 +1501,53 @@ private fun ChoiceButton(
                 fontWeight = FontWeight.SemiBold
             )
         )
+    }
+}
+
+@Composable
+private fun FullScreenImageViewer(uri: Uri, onDismiss: () -> Unit) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.95f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                )
+        ) {
+            AsyncImage(
+                model = uri,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .systemBarsPadding()
+                    .padding(16.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(12.dp)
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.12f))
+                    .clickable(onClick = onDismiss),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = null,
+                    tint = NomadSilver,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
     }
 }
 

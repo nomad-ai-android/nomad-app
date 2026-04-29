@@ -44,7 +44,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
 
     override val chatRepository: ChatRepository by lazy {
         val db = ChatDatabase.get(appContext)
-        ChatRepository(db.sessionDao(), db.messageDao())
+        ChatRepository(db.sessionDao(), db.messageDao(), appContext)
     }
 
     override val expenses: ExpenseRepository by lazy {
