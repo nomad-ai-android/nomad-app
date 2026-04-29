@@ -29,7 +29,7 @@ private val NomadColorScheme = darkColorScheme(
     surfaceVariant = NomadPurple,
     onSurfaceVariant = NomadMist,
     outline = NomadMuted,
-    error = Color(0xFFFF6B8A),
+    error = Color(0xFFE57A8E),
     onError = NomadSilver
 )
 

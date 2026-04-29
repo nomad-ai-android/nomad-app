@@ -3,23 +3,24 @@ package com.nomad.travel.ui.theme
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-// Core palette — inspired by the provided design sample:
-// deep violet gradient background, silvered foreground accents.
-val NomadInk      = Color(0xFF0B0818)  // near-black violet, bottom of gradient
-val NomadNight    = Color(0xFF17092E)  // dark surface
-val NomadPurple   = Color(0xFF2A1558)  // primary surface
-val NomadViolet   = Color(0xFF4B2899)  // mid gradient
-val NomadRoyal    = Color(0xFF6B36D9)  // accent primary
-val NomadGlow     = Color(0xFF9B74FF)  // accent highlight
-val NomadSilver   = Color(0xFFE8E4F5)  // headline text
-val NomadMist     = Color(0xFFB7B0D4)  // body text
-val NomadMuted    = Color(0xFF7A7398)  // muted
+// Refined palette — sophisticated dark theme inspired by premium AI tools
+// (Anthropic / Linear / Arc). Retains violet identity but trades vivid neon
+// for low-saturation indigo-lavender so accents read as polished, not loud.
+val NomadInk      = Color(0xFF0D0B18)  // deepest base — violet-tinted charcoal
+val NomadNight    = Color(0xFF161226)  // dark surface — soft violet slate
+val NomadPurple   = Color(0xFF221A38)  // primary surface — refined dark violet
+val NomadViolet   = Color(0xFF362956)  // mid gradient — visible violet depth
+val NomadRoyal    = Color(0xFF8A6FE0)  // accent primary — confident lavender-violet
+val NomadGlow     = Color(0xFFB39EEB)  // accent highlight — soft luminous lavender
+val NomadSilver   = Color(0xFFEDEAF6)  // headline text — cool white with violet hint
+val NomadMist     = Color(0xFFB0A6CF)  // body text — muted lavender
+val NomadMuted    = Color(0xFF73698E)  // muted — violet-tinted slate
 
 val NomadUserBubble      = NomadRoyal
-val NomadAssistantBubble = Color(0xFF1F1140)
-val NomadInputField      = Color(0xFF1B0F35)
+val NomadAssistantBubble = Color(0xFF241D3A)
+val NomadInputField      = Color(0xFF1D1632)
 
 val NomadGradient: Brush
     get() = Brush.verticalGradient(
-        colors = listOf(NomadNight, NomadPurple, NomadInk)
+        colors = listOf(NomadPurple, NomadNight, NomadInk)
     )

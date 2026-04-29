@@ -48,7 +48,7 @@ import com.nomad.travel.ui.theme.NomadRoyal
 import com.nomad.travel.ui.theme.NomadSilver
 import java.util.Locale
 
-private val WarningYellow = Color(0xFFF5C14A)
+private val WarningYellow = Color(0xFFD9B264)
 
 @Composable
 fun ModelCard(
@@ -288,12 +288,12 @@ private fun StatusRow(
                 Icon(
                     Icons.Default.Check,
                     contentDescription = null,
-                    tint = Color(0xFF78E3A9),
+                    tint = Color(0xFF7BC9A4),
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = stringResource(R.string.model_downloaded),
-                    style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF78E3A9))
+                    style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFF7BC9A4))
                 )
                 Spacer(Modifier.weight(1f))
                 TextPill(

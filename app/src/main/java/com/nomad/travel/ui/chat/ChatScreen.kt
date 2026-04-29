@@ -620,7 +620,7 @@ private fun ChatTopBar(
                     modifier = Modifier
                         .size(6.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF78E3A9))
+                        .background(Color(0xFF7BC9A4))
                 )
                 Spacer(Modifier.size(6.dp))
                 Text(
@@ -987,7 +987,7 @@ private fun renderMarkdown(text: String, appendCaret: Boolean): AnnotatedString 
                 }
                 trimmed.startsWith("> ") -> {
                     append(indent)
-                    withStyle(SpanStyle(color = Color(0xFFB7B0D4), fontStyle = FontStyle.Italic)) {
+                    withStyle(SpanStyle(color = NomadMist, fontStyle = FontStyle.Italic)) {
                         appendInlineMd(trimmed.removePrefix("> "))
                     }
                 }
