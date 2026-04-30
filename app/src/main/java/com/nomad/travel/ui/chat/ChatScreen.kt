@@ -66,6 +66,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.filled.Settings
@@ -84,12 +85,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -124,6 +127,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.nomad.travel.NomadApp
 import com.nomad.travel.R
 import com.nomad.travel.data.ChatMessage
 import com.nomad.travel.data.Role
@@ -140,6 +144,7 @@ import com.nomad.travel.ui.theme.NomadRoyal
 import com.nomad.travel.ui.theme.NomadSilver
 import com.nomad.travel.ui.theme.NomadUserBubble
 import java.io.File
+import java.util.Locale
 
 @Composable
 fun ChatScreen(
@@ -180,11 +185,73 @@ fun ChatScreen(
     var sendTick by remember { mutableStateOf(0) }
     var showTranslateSheet by remember { mutableStateOf(false) }
     var viewerImage by remember { mutableStateOf<Uri?>(null) }
+    var voiceModeOpen by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    // STT: wire mic results to input field
-    vm.onSttResult = { text -> input = text }
+    val app = context.applicationContext as NomadApp
+    val tts = remember { app.container.tts }
+    val prefs = remember { app.container.prefs }
+    val voiceLoopEnabled by prefs.voiceLoopEnabled.collectAsStateWithLifecycle(initialValue = true)
+    val voiceModeOpenState = rememberUpdatedState(voiceModeOpen)
+    val voiceLoopState = rememberUpdatedState(voiceLoopEnabled)
+    val isRespondingState = rememberUpdatedState(state.isResponding)
+    val isMutedState = rememberUpdatedState(state.isMuted)
+    val spokenMessageIds = remember { mutableSetOf<String>() }
+
+    // STT: wire mic results.
+    //  - In voice mode, suppress partial-text typing into the input box so the
+    //    chat stays visible without churn. The final result auto-sends.
+    //  - Outside voice mode, partials populate the input field as before.
+    vm.onSttResult = { text ->
+        if (!voiceModeOpenState.value) input = text
+    }
+    vm.onSttFinalResult = { text ->
+        if (voiceModeOpenState.value && !isMutedState.value && text.isNotBlank()) {
+            input = ""
+            spokenMessageIds.clear()
+            scope.launch {
+                // Barge-in: cancel any in-flight response (also stops streaming
+                // tokens) and stop TTS before starting a new turn.
+                tts.stop()
+                if (isRespondingState.value) vm.cancelAndAwait()
+                vm.send(context, text, null)
+            }
+        }
+    }
+
+    // Stop TTS the instant the recognizer detects user speech, so the user
+    // can talk over the assistant. Don't cancel the response stream here —
+    // we wait for the final transcript to confirm it was real speech.
+    vm.onSttSpeechStart = {
+        if (voiceModeOpenState.value && !isMutedState.value) {
+            tts.stop()
+        }
+    }
+
+    // Speak each new assistant reply while voice mode is open.
+    LaunchedEffect(voiceModeOpen, state.isResponding, state.messages.size) {
+        if (!voiceModeOpen) return@LaunchedEffect
+        if (state.isResponding) return@LaunchedEffect
+        val last = state.messages.lastOrNull() ?: return@LaunchedEffect
+        if (last.role != Role.ASSISTANT) return@LaunchedEffect
+        if (last.pending || last.streaming) return@LaunchedEffect
+        if (last.text.isBlank()) return@LaunchedEffect
+        if (last.id in spokenMessageIds) return@LaunchedEffect
+        spokenMessageIds.add(last.id)
+        tts.speak(last.text, Locale.getDefault().language)
+    }
+
+    // The continuous recognizer (started by VoiceConversationDialog) already
+    // re-arms itself after each session, so we no longer rely on TTS completion
+    // to restart STT. Keep the callback null to avoid stacking restarts.
+    DisposableEffect(Unit) {
+        tts.onSpeakComplete = null
+        onDispose { tts.onSpeakComplete = null }
+    }
+    // Suppress unused-variable warnings for prefs flags that the dialog reads.
+    @Suppress("UNUSED_EXPRESSION") voiceLoopState
+    @Suppress("UNUSED_EXPRESSION") voiceLoopEnabled
     val micPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -251,6 +318,7 @@ fun ChatScreen(
                     else micPermissionLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
                 }
             },
+            onVoice = { voiceModeOpen = true },
             onCamera = {
                 val granted = context.checkSelfPermission(Manifest.permission.CAMERA) ==
                     PackageManager.PERMISSION_GRANTED
@@ -315,6 +383,34 @@ fun ChatScreen(
     viewerImage?.let { uri ->
         FullScreenImageViewer(uri = uri, onDismiss = { viewerImage = null })
     }
+
+    val voiceMicLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted -> if (granted) vm.startContinuousListening() }
+
+    if (voiceModeOpen) {
+        // Auto-start continuous listening when the dialog appears.
+        LaunchedEffect(Unit) {
+            val granted = context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED
+            if (granted) vm.startContinuousListening()
+            else voiceMicLauncher.launch(Manifest.permission.RECORD_AUDIO)
+        }
+
+        VoiceConversationDialog(
+            isListening = state.isListening,
+            isResponding = state.isResponding,
+            isMuted = state.isMuted,
+            onToggleMute = { vm.setMuted(!state.isMuted) },
+            onDismiss = {
+                vm.stopContinuousListening()
+                tts.stop()
+                spokenMessageIds.clear()
+                vm.setMuted(false)
+                voiceModeOpen = false
+            }
+        )
+    }
 }
 
 @Composable
@@ -334,6 +430,7 @@ private fun ChatScreenBody(
     onCamera: () -> Unit,
     onGallery: () -> Unit,
     onMic: () -> Unit,
+    onVoice: () -> Unit,
     onOpenMenuView: (Uri, String) -> Unit,
     onImageClick: (Uri) -> Unit,
     onResolveCurrency: (Boolean) -> Unit,
@@ -531,7 +628,8 @@ private fun ChatScreenBody(
                 onGallery = onGallery,
                 onMic = onMic,
                 onSend = onSend,
-                onCancel = onCancel
+                onCancel = onCancel,
+                onVoice = onVoice
             )
         }
     }
@@ -1176,6 +1274,8 @@ private fun AttachmentPreview(uri: Uri?, onClear: () -> Unit) {
     }
 }
 
+private enum class InputBarAction { Cancel, Send, Voice }
+
 @Composable
 private fun InputBar(
     input: String,
@@ -1187,7 +1287,8 @@ private fun InputBar(
     onGallery: () -> Unit,
     onMic: () -> Unit,
     onSend: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    onVoice: () -> Unit
 ) {
     var showAttachMenu by remember { mutableStateOf(false) }
 
@@ -1281,27 +1382,36 @@ private fun InputBar(
                 )
             }
 
-            // Send / Cancel button
-            val active = isResponding || canSend
-            val bgBrush = if (active) {
-                Brush.linearGradient(listOf(NomadRoyal, NomadGlow))
-            } else {
-                SolidColor(Color.White.copy(alpha = 0.1f))
+            // Send / Cancel / Voice button — voice replaces send when input is empty.
+            val mode = when {
+                isResponding -> InputBarAction.Cancel
+                canSend -> InputBarAction.Send
+                else -> InputBarAction.Voice
+            }
+            val bgBrush = Brush.linearGradient(listOf(NomadRoyal, NomadGlow))
+            val (icon, desc) = when (mode) {
+                InputBarAction.Cancel -> Icons.Default.Close to stringResource(R.string.send)
+                InputBarAction.Send -> Icons.AutoMirrored.Filled.Send to stringResource(R.string.send)
+                InputBarAction.Voice -> Icons.Default.GraphicEq to stringResource(R.string.chat_voice_open)
             }
             Box(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
                     .background(bgBrush)
-                    .clickable(enabled = active) {
-                        if (isResponding) onCancel() else onSend()
+                    .clickable {
+                        when (mode) {
+                            InputBarAction.Cancel -> onCancel()
+                            InputBarAction.Send -> onSend()
+                            InputBarAction.Voice -> onVoice()
+                        }
                     },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (isResponding) Icons.Default.Close else Icons.AutoMirrored.Filled.Send,
-                    contentDescription = stringResource(R.string.send),
-                    tint = if (active) NomadSilver else NomadMuted,
+                    imageVector = icon,
+                    contentDescription = desc,
+                    tint = NomadSilver,
                     modifier = Modifier.size(18.dp)
                 )
             }

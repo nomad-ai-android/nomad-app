@@ -32,8 +32,11 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.ui.draw.alpha
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.SmartToy
@@ -76,6 +79,9 @@ import com.nomad.travel.R
 import com.nomad.travel.llm.ModelCatalog
 import com.nomad.travel.llm.ModelEntry
 import com.nomad.travel.tools.ContextStrategy
+import com.nomad.travel.tts.KokoroTtsEngine
+import com.nomad.travel.tts.SystemTtsEngine
+import com.nomad.travel.tts.TtsModelCatalog
 import com.nomad.travel.ui.setup.ModelCard
 import com.nomad.travel.ui.theme.NomadGlow
 import com.nomad.travel.ui.theme.NomadInputField
@@ -111,6 +117,7 @@ fun SettingsScreen(
 
     var confirmClear by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<ModelEntry?>(null) }
+    var pendingTtsDelete by remember { mutableStateOf<ModelEntry?>(null) }
     var pendingCancel by remember { mutableStateOf<ModelEntry?>(null) }
     var languageExpanded by rememberSaveable { mutableStateOf(false) }
     var showUpgradeDialog by rememberSaveable { mutableStateOf(false) }
@@ -332,6 +339,107 @@ fun SettingsScreen(
                 }
             }
 
+            // ─── Voice / TTS ──────────────────────
+            Section(
+                title = stringResource(R.string.settings_tts_section),
+                icon = Icons.Default.GraphicEq
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Engine selector
+                    Text(
+                        text = stringResource(R.string.settings_tts_engine),
+                        style = MaterialTheme.typography.labelMedium.copy(color = NomadMuted),
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                    TtsEngineRow(
+                        title = stringResource(R.string.settings_tts_engine_system),
+                        body = stringResource(R.string.settings_tts_engine_system_body),
+                        selected = state.ttsEngineId == SystemTtsEngine.ID,
+                        enabled = true,
+                        onClick = { vm.setTtsEngine(SystemTtsEngine.ID) }
+                    )
+                    val neuralAvailable = state.ttsModelRows
+                        .firstOrNull { it.entry.id == TtsModelCatalog.forLanguage(state.language).id }
+                        ?.downloaded == true
+                    TtsEngineRow(
+                        title = stringResource(R.string.settings_tts_engine_kokoro),
+                        body = stringResource(R.string.settings_tts_engine_kokoro_body),
+                        selected = state.ttsEngineId == KokoroTtsEngine.ID,
+                        enabled = neuralAvailable,
+                        onClick = { vm.setTtsEngine(KokoroTtsEngine.ID) }
+                    )
+
+                    // Neural model card — Kokoro for non-Korean UIs, a Korean-
+                    // specific model when the UI is Korean.
+                    val targetEntryId = TtsModelCatalog.forLanguage(state.language).id
+                    val activeRow = state.ttsModelRows.firstOrNull {
+                        it.entry.id == targetEntryId
+                    }
+                    activeRow?.let { row ->
+                        Spacer(Modifier.height(2.dp))
+                        ModelCard(
+                            row = row,
+                            active = state.ttsEngineId == KokoroTtsEngine.ID && row.downloaded,
+                            onSelect = {
+                                if (row.downloaded) vm.setTtsEngine(KokoroTtsEngine.ID)
+                            },
+                            onDownload = { vm.startTtsDownload(row.entry) },
+                            onCancel = { vm.cancelTtsDownload(row.entry) },
+                            onDelete = { pendingTtsDelete = row.entry }
+                        )
+                        if (row.downloaded) {
+                            Text(
+                                text = stringResource(R.string.settings_tts_kokoro_preview),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    color = NomadMist,
+                                    lineHeight = 16.sp
+                                ),
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
+                    }
+
+                    // Voice loop switch
+                    Spacer(Modifier.height(2.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(Color.White.copy(alpha = 0.04f))
+                            .border(
+                                1.dp,
+                                Color.White.copy(alpha = 0.08f),
+                                RoundedCornerShape(14.dp)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_voice_loop),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = NomadSilver
+                            )
+                            Spacer(Modifier.size(2.dp))
+                            Text(
+                                text = stringResource(R.string.settings_voice_loop_body),
+                                style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+                            )
+                        }
+                        Switch(
+                            checked = state.voiceLoopEnabled,
+                            onCheckedChange = { vm.setVoiceLoopEnabled(it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = NomadGlow,
+                                checkedTrackColor = NomadRoyal,
+                                uncheckedThumbColor = NomadMuted,
+                                uncheckedTrackColor = NomadMuted.copy(alpha = 0.3f)
+                            )
+                        )
+                    }
+                }
+            }
+
             // ─── Camera search ────────────────────
             Box(
                 modifier = Modifier.onGloballyPositioned { coords ->
@@ -505,6 +613,41 @@ fun SettingsScreen(
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.common_cancel))
+                }
+            },
+            containerColor = NomadInputField,
+            titleContentColor = NomadSilver,
+            textContentColor = NomadMist
+        )
+    }
+
+    pendingTtsDelete?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { pendingTtsDelete = null },
+            title = { Text(stringResource(R.string.settings_tts_delete_title)) },
+            text = {
+                val entryName = if (entry.displayNameResId != 0)
+                    stringResource(entry.displayNameResId)
+                else entry.displayName
+                Text(
+                    text = entryName + "\n\n" +
+                        stringResource(R.string.settings_tts_delete_body)
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.deleteTtsModel(entry)
+                    pendingTtsDelete = null
+                }) {
+                    Text(
+                        stringResource(R.string.common_delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingTtsDelete = null }) {
                     Text(stringResource(R.string.common_cancel))
                 }
             },
@@ -722,6 +865,62 @@ private fun ContextStrategyRow(
                     .clip(CircleShape)
                     .background(NomadGlow)
             )
+        }
+    }
+}
+
+@Composable
+private fun TtsEngineRow(
+    title: String,
+    body: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    val border = when {
+        !enabled -> Color.White.copy(alpha = 0.06f)
+        selected -> NomadGlow
+        else -> Color.White.copy(alpha = 0.08f)
+    }
+    val bg = when {
+        !enabled -> Color.White.copy(alpha = 0.02f)
+        selected -> NomadRoyal.copy(alpha = 0.18f)
+        else -> Color.White.copy(alpha = 0.04f)
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(bg)
+            .border(1.5.dp, border, RoundedCornerShape(14.dp))
+            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier)
+            .alpha(if (enabled) 1f else 0.5f)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.size(4.dp))
+            Text(
+                text = body,
+                style = MaterialTheme.typography.labelSmall.copy(color = NomadMuted)
+            )
+        }
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(CircleShape)
+                    .background(NomadGlow),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
         }
     }
 }

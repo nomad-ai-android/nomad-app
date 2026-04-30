@@ -12,7 +12,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.CreationExtras
 import com.nomad.travel.NomadApp
 import com.nomad.travel.llm.GemmaEngine
-import com.nomad.travel.tts.TtsService
+import com.nomad.travel.tts.TtsManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -117,7 +117,7 @@ data class InterpretUiState(
 
 class TranslateViewModel(
     private val gemma: GemmaEngine,
-    private val tts: TtsService,
+    private val tts: TtsManager,
     private val app: Application
 ) : ViewModel() {
 

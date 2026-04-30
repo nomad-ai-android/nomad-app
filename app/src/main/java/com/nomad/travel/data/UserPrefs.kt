@@ -21,6 +21,8 @@ class UserPrefs(private val context: Context) {
     private val KEY_LAST_SESSION_ID = longPreferencesKey("last_session_id")
     private val KEY_AUTO_UPDATE_CHECK = booleanPreferencesKey("auto_update_check")
     private val KEY_CAMERA_INSTANT_PREVIEW = booleanPreferencesKey("camera_instant_preview")
+    private val KEY_TTS_ENGINE = stringPreferencesKey("tts_engine")
+    private val KEY_VOICE_LOOP = booleanPreferencesKey("voice_loop_enabled")
 
     val language: Flow<String?> = context.dataStore.data.map { it[KEY_LANGUAGE] }
     val autoUpdateCheck: Flow<Boolean> = context.dataStore.data.map { it[KEY_AUTO_UPDATE_CHECK] != false }
@@ -29,6 +31,8 @@ class UserPrefs(private val context: Context) {
     val contextStrategy: Flow<String?> = context.dataStore.data.map { it[KEY_CONTEXT_STRATEGY] }
     val lastSessionId: Flow<Long?> = context.dataStore.data.map { it[KEY_LAST_SESSION_ID] }
     val cameraInstantPreview: Flow<Boolean> = context.dataStore.data.map { it[KEY_CAMERA_INSTANT_PREVIEW] == true }
+    val ttsEngine: Flow<String?> = context.dataStore.data.map { it[KEY_TTS_ENGINE] }
+    val voiceLoopEnabled: Flow<Boolean> = context.dataStore.data.map { it[KEY_VOICE_LOOP] != false }
 
     suspend fun languageBlocking(): String? = language.first()
     suspend fun activeModelIdBlocking(): String? = activeModelId.first()
@@ -68,5 +72,18 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setCameraInstantPreview(enabled: Boolean) {
         context.dataStore.edit { it[KEY_CAMERA_INSTANT_PREVIEW] = enabled }
+    }
+
+    suspend fun ttsEngineBlocking(): String? = ttsEngine.first()
+
+    suspend fun setTtsEngine(id: String) {
+        context.dataStore.edit { it[KEY_TTS_ENGINE] = id }
+    }
+
+    suspend fun voiceLoopEnabledBlocking(): Boolean =
+        context.dataStore.data.first()[KEY_VOICE_LOOP] != false
+
+    suspend fun setVoiceLoopEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[KEY_VOICE_LOOP] = enabled }
     }
 }
