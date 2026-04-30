@@ -93,6 +93,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nomad.travel.R
+import com.nomad.travel.ui.NomadHaptics
 import com.nomad.travel.ui.components.NomadLogoSpinner
 import com.nomad.travel.ui.theme.NomadGlow
 import com.nomad.travel.ui.theme.NomadInputField
@@ -133,6 +134,45 @@ fun CameraSearchScreen(
     var deleteTargetId by remember { mutableStateOf<String?>(null) }
     var captureFlashTick by remember { mutableStateOf(0) }
     val previewItem = state.queue.firstOrNull { it.id == state.instantPreviewItemId }
+    var completedHapticIds by remember { mutableStateOf(emptySet<String>()) }
+    var realtimeHapticItemId by remember { mutableStateOf<String?>(null) }
+    var realtimeHapticTextLength by remember { mutableStateOf(0) }
+
+    LaunchedEffect(state.queue, state.instantPreviewItemId) {
+        val previewId = state.instantPreviewItemId
+        val newlyCompleted = state.queue
+            .filter { it.status == QueueStatus.DONE && it.id !in completedHapticIds }
+        if (newlyCompleted.any { it.id != previewId }) {
+            NomadHaptics.answerComplete(context)
+        }
+        if (newlyCompleted.isNotEmpty()) {
+            completedHapticIds = completedHapticIds + newlyCompleted.map { it.id }
+        }
+        val existingIds = state.queue.map { it.id }.toSet()
+        if (completedHapticIds.any { it !in existingIds }) {
+            completedHapticIds = completedHapticIds.filterTo(mutableSetOf()) { it in existingIds }
+        }
+    }
+
+    val previewItemId = previewItem?.id
+    val previewAnswerLength = previewItem?.answer?.length ?: 0
+    val previewStatus = previewItem?.status
+    LaunchedEffect(previewItemId, previewAnswerLength, previewStatus) {
+        if (previewItemId == null || previewStatus != QueueStatus.PROCESSING) {
+            realtimeHapticItemId = null
+            realtimeHapticTextLength = 0
+            return@LaunchedEffect
+        }
+        val isNewPreviewStream = realtimeHapticItemId != previewItemId
+        if (isNewPreviewStream) {
+            realtimeHapticItemId = previewItemId
+            realtimeHapticTextLength = 0
+        }
+        if (previewAnswerLength > realtimeHapticTextLength) {
+            NomadHaptics.lightTick(context)
+            realtimeHapticTextLength = previewAnswerLength
+        }
+    }
 
     Box(
         modifier = Modifier

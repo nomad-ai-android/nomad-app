@@ -128,6 +128,7 @@ import com.nomad.travel.R
 import com.nomad.travel.data.ChatMessage
 import com.nomad.travel.data.Role
 import com.nomad.travel.data.chat.ChatSessionEntity
+import com.nomad.travel.ui.NomadHaptics
 import com.nomad.travel.ui.components.NomadLogoSpinner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -182,6 +183,30 @@ fun ChatScreen(
     var viewerImage by remember { mutableStateOf<Uri?>(null) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    var lastHapticMessageId by remember { mutableStateOf<String?>(null) }
+    var lastHapticTextLength by remember { mutableStateOf(0) }
+
+    val streamingAssistant = state.messages.lastOrNull {
+        it.role == Role.ASSISTANT && it.streaming
+    }
+    val streamingMessageId = streamingAssistant?.id
+    val streamingTextLength = streamingAssistant?.text?.length ?: 0
+    LaunchedEffect(streamingMessageId, streamingTextLength) {
+        if (streamingMessageId == null) {
+            lastHapticMessageId = null
+            lastHapticTextLength = 0
+            return@LaunchedEffect
+        }
+        val isNewStream = lastHapticMessageId != streamingMessageId
+        if (isNewStream) {
+            lastHapticMessageId = streamingMessageId
+            lastHapticTextLength = 0
+        }
+        if (streamingTextLength > lastHapticTextLength) {
+            NomadHaptics.lightTick(context)
+            lastHapticTextLength = streamingTextLength
+        }
+    }
 
     // STT: wire mic results to input field
     vm.onSttResult = { text -> input = text }
