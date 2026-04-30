@@ -30,7 +30,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Gavel
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -55,6 +63,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -144,7 +153,10 @@ fun SettingsScreen(
             Spacer(Modifier.height(4.dp))
 
             // ─── Language ─────────────────────────
-            Section(stringResource(R.string.settings_language)) {
+            Section(
+                title = stringResource(R.string.settings_language),
+                icon = Icons.Default.Language
+            ) {
                 val current = LANGS.firstOrNull { it.code == state.language } ?: LANGS[0]
                 CollapsibleRow(
                     leading = {
@@ -185,7 +197,10 @@ fun SettingsScreen(
             }
 
             // ─── System prompt ────────────────────
-            Section(stringResource(R.string.settings_system_prompt)) {
+            Section(
+                title = stringResource(R.string.settings_system_prompt),
+                icon = Icons.Default.Tune
+            ) {
                 Column {
                     Box(
                         modifier = Modifier
@@ -232,7 +247,10 @@ fun SettingsScreen(
             }
 
             // ─── Context strategy ─────────────────
-            Section(stringResource(R.string.settings_context_title)) {
+            Section(
+                title = stringResource(R.string.settings_context_title),
+                icon = Icons.Default.Memory
+            ) {
                 val currentLabel = when (state.contextStrategy) {
                     ContextStrategy.RESET -> stringResource(R.string.settings_context_reset)
                     else -> stringResource(R.string.settings_context_drop_oldest)
@@ -275,7 +293,10 @@ fun SettingsScreen(
             }
 
             // ─── Model ────────────────────────────
-            Section(stringResource(R.string.settings_model_management)) {
+            Section(
+                title = stringResource(R.string.settings_model_management),
+                icon = Icons.Default.SmartToy
+            ) {
                 val primaryRow = state.modelRows.firstOrNull { it.entry.id == ModelCatalog.gemma4E2B.id }
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -317,7 +338,10 @@ fun SettingsScreen(
                     cameraSectionY = coords.boundsInParent().top.toInt()
                 }
             ) {
-                Section(stringResource(R.string.settings_camera_section)) {
+                Section(
+                    title = stringResource(R.string.settings_camera_section),
+                    icon = Icons.Default.CameraAlt
+                ) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
                             modifier = Modifier
@@ -356,7 +380,10 @@ fun SettingsScreen(
             }
 
             // ─── App version & update ────────────
-            Section(stringResource(R.string.settings_app_version)) {
+            Section(
+                title = stringResource(R.string.settings_app_version),
+                icon = Icons.Default.SystemUpdate
+            ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -391,7 +418,10 @@ fun SettingsScreen(
             }
 
             // ─── Danger zone ──────────────────────
-            Section(stringResource(R.string.settings_chat_section)) {
+            Section(
+                title = stringResource(R.string.settings_chat_section),
+                icon = Icons.Default.Chat
+            ) {
                 DangerButton(
                     label = stringResource(R.string.settings_clear_chats),
                     onClick = { confirmClear = true }
@@ -399,7 +429,10 @@ fun SettingsScreen(
             }
 
             // ─── Legal (always last) ───────────────
-            Section(stringResource(R.string.settings_legal_section)) {
+            Section(
+                title = stringResource(R.string.settings_legal_section),
+                icon = Icons.Default.Gavel
+            ) {
                 val uriHandler = LocalUriHandler.current
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     LegalRow(
@@ -575,17 +608,51 @@ private fun SettingsTopBar(onBack: () -> Unit) {
 }
 
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
-    Column {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.labelLarge.copy(
-                color = NomadMuted,
-                letterSpacing = 1.sp
-            ),
-            modifier = Modifier.padding(start = 4.dp, bottom = 10.dp)
-        )
-        content()
+private fun Section(
+    title: String,
+    icon: ImageVector? = null,
+    content: @Composable () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 6.dp, bottom = 10.dp)
+        ) {
+            if (icon != null) {
+                Box(
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(NomadRoyal.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = NomadGlow,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                Spacer(Modifier.size(10.dp))
+            }
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    color = NomadSilver,
+                    fontWeight = FontWeight.SemiBold
+                )
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color.White.copy(alpha = 0.025f))
+                .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(20.dp))
+                .padding(14.dp)
+        ) {
+            content()
+        }
     }
 }
 

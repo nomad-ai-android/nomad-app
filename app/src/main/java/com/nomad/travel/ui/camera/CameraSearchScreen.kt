@@ -62,7 +62,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -94,6 +93,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.nomad.travel.R
+import com.nomad.travel.ui.components.NomadLogoSpinner
 import com.nomad.travel.ui.theme.NomadGlow
 import com.nomad.travel.ui.theme.NomadInputField
 import com.nomad.travel.ui.theme.NomadMist
@@ -595,12 +595,10 @@ private fun QueueRailItem(
         // Status indicator (hidden when delete affordance is showing).
         if (!showDelete) {
             if (isProcessing) {
-                CircularProgressIndicator(
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .size(22.dp),
-                    strokeWidth = 2.dp,
-                    color = NomadGlow
+                NomadLogoSpinner(
+                    modifier = Modifier.align(Alignment.Center),
+                    size = 32.dp,
+                    showHalo = false
                 )
             } else {
                 Box(
@@ -740,10 +738,9 @@ private fun DetailOverlay(item: QueueItem, onDismiss: () -> Unit) {
                         modifier = Modifier.weight(1f)
                     )
                     if (item.status == QueueStatus.PROCESSING) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = NomadGlow
+                        NomadLogoSpinner(
+                            size = 22.dp,
+                            showHalo = false
                         )
                     }
                 }

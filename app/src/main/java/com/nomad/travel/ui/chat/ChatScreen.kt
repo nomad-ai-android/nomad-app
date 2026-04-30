@@ -8,14 +8,17 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -95,10 +98,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -122,6 +128,7 @@ import com.nomad.travel.R
 import com.nomad.travel.data.ChatMessage
 import com.nomad.travel.data.Role
 import com.nomad.travel.data.chat.ChatSessionEntity
+import com.nomad.travel.ui.components.NomadLogoSpinner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.nomad.travel.ui.theme.NomadAssistantBubble
@@ -173,6 +180,8 @@ fun ChatScreen(
     var sendTick by remember { mutableStateOf(0) }
     var showTranslateSheet by remember { mutableStateOf(false) }
     var viewerImage by remember { mutableStateOf<Uri?>(null) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // STT: wire mic results to input field
     vm.onSttResult = { text -> input = text }
@@ -223,6 +232,8 @@ fun ChatScreen(
                 vm.send(context, input, pendingImage)
                 input = ""
                 sendTick++
+                keyboardController?.hide()
+                focusManager.clearFocus(force = true)
             },
             onCancel = { vm.cancelResponse() },
             onOpenMenuView = onOpenMenuView,
@@ -435,28 +446,49 @@ private fun ChatScreenBody(
                             renderedIds.add(msg.id)
                             new
                         }
-                        val shouldAnimate = isNew && (msg.role == Role.USER || msg.pending)
+                        val isUserMsg = msg.role == Role.USER
+                        val shouldAnimate = isNew && (isUserMsg || msg.pending)
 
                         val animProgress = remember(msg.id) {
                             Animatable(if (shouldAnimate) 0f else 1f)
                         }
                         if (shouldAnimate) {
-                            val animDelay = if (msg.role == Role.ASSISTANT) 400 else 0
                             LaunchedEffect(msg.id) {
-                                animProgress.animateTo(
-                                    targetValue = 1f,
-                                    animationSpec = tween(
-                                        durationMillis = 350,
-                                        delayMillis = animDelay,
-                                        easing = FastOutSlowInEasing
+                                if (isUserMsg) {
+                                    animProgress.animateTo(
+                                        targetValue = 1f,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                            stiffness = Spring.StiffnessMediumLow
+                                        )
                                     )
-                                )
+                                } else {
+                                    animProgress.animateTo(
+                                        targetValue = 1f,
+                                        animationSpec = tween(
+                                            durationMillis = 350,
+                                            delayMillis = 400,
+                                            easing = FastOutSlowInEasing
+                                        )
+                                    )
+                                }
                             }
                         }
+                        val transformOriginX = if (isUserMsg) 1f else 0f
                         Box(
                             modifier = Modifier.graphicsLayer {
-                                alpha = animProgress.value
-                                translationY = (1f - animProgress.value) * 40f
+                                val p = animProgress.value
+                                alpha = p
+                                if (isUserMsg) {
+                                    val scale = 0.6f + 0.4f * p
+                                    scaleX = scale
+                                    scaleY = scale
+                                    transformOrigin = TransformOrigin(transformOriginX, 1f)
+                                    translationY = (1f - p) * 28f
+                                    translationX = (1f - p) * 24f
+                                } else {
+                                    translationY = (1f - p) * 40f
+                                }
                             }
                         ) {
                             MessageRow(
@@ -787,8 +819,8 @@ private fun MessageRow(
         verticalAlignment = Alignment.Top
     ) {
         if (!isUser) {
-            AssistantAvatar()
-            Spacer(Modifier.size(10.dp))
+            AssistantAvatar(thinking = msg.pending)
+            Spacer(Modifier.size(2.dp))
         }
         Box(
             modifier = Modifier.widthIn(max = 280.dp)
@@ -851,17 +883,28 @@ private fun MenuViewButton(onClick: () -> Unit) {
 }
 
 @Composable
-private fun AssistantAvatar() {
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-    ) {
-        Image(
-            painter = painterResource(R.drawable.ai_avatar),
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize()
-        )
+private fun AssistantAvatar(thinking: Boolean = false) {
+    Crossfade(
+        targetState = thinking,
+        animationSpec = tween(durationMillis = 360, easing = FastOutSlowInEasing),
+        label = "assistantAvatarMode"
+    ) { isThinking ->
+        Box(
+            modifier = Modifier.size(40.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (isThinking) {
+                NomadLogoSpinner(size = 40.dp, showHalo = true)
+            } else {
+                Image(
+                    painter = painterResource(R.drawable.ic_launcher_logo),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                )
+            }
+        }
     }
 }
 
@@ -1057,7 +1100,7 @@ private fun AnnotatedString.Builder.appendInlineMd(line: String) {
 private fun PendingBubble(key: String) {
     var visible by remember(key) { mutableStateOf(false) }
     LaunchedEffect(key) {
-        delay(350)
+        delay(250)
         visible = true
     }
     AnimatedVisibility(
@@ -1065,54 +1108,31 @@ private fun PendingBubble(key: String) {
         enter = fadeIn(tween(260)),
         exit = fadeOut(tween(160))
     ) {
-        Box(
-            modifier = Modifier
-                .clip(
-                    RoundedCornerShape(
-                        topStart = 4.dp,
-                        topEnd = 20.dp,
-                        bottomStart = 20.dp,
-                        bottomEnd = 20.dp
-                    )
-                )
-                .background(NomadAssistantBubble)
-                .padding(horizontal = 14.dp, vertical = 10.dp)
-        ) {
-            TypingDots()
+        Box(modifier = Modifier.padding(vertical = 8.dp)) {
+            ThinkingLabel()
         }
     }
 }
 
 @Composable
-private fun TypingDots() {
-    val transition = rememberInfiniteTransition(label = "dots")
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-        modifier = Modifier.height(22.dp)
-    ) {
-        repeat(3) { i ->
-            val alpha by transition.animateFloat(
-                initialValue = 0.25f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(
-                        durationMillis = 620,
-                        delayMillis = i * 180,
-                        easing = FastOutSlowInEasing
-                    ),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "dot$i"
-            )
-            Box(
-                modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(NomadMist.copy(alpha = alpha))
-            )
-        }
-    }
+private fun ThinkingLabel() {
+    val transition = rememberInfiniteTransition(label = "thinkingLabel")
+    val alpha by transition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "thinkingAlpha"
+    )
+    Text(
+        text = stringResource(R.string.thinking),
+        style = MaterialTheme.typography.bodyMedium.copy(
+            color = NomadMist.copy(alpha = alpha),
+            fontWeight = FontWeight.Medium
+        )
+    )
 }
 
 @Composable
