@@ -25,6 +25,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -49,6 +51,7 @@ data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val isResponding: Boolean = false,
     val isListening: Boolean = false,
+    val isMuted: Boolean = false,
     val pending: PendingAction? = null,
     val pendingImage: Uri? = null
 )
@@ -65,12 +68,15 @@ class ChatViewModel(
     private val currentSessionId = MutableStateFlow<Long?>(null)
     private val responding = MutableStateFlow(false)
     private val listening = MutableStateFlow(false)
+    private val muted = MutableStateFlow(false)
     /** In-memory streaming/pending message layered on top of persisted messages. */
     private val overlay = MutableStateFlow<ChatMessage?>(null)
     private val pending = MutableStateFlow<PendingAction?>(null)
     private val pendingImage = MutableStateFlow<Uri?>(null)
     private var streamJob: Job? = null
     private var speechRecognizer: SpeechRecognizer? = null
+    private var continuousMode: Boolean = false
+    private var restartJob: Job? = null
 
     private val persistedMessages = currentSessionId.flatMapLatest { id ->
         if (id == null) flowOf(emptyList()) else repo.observeMessages(id)
@@ -94,9 +100,15 @@ class ChatViewModel(
         },
         pending,
         listening,
-        pendingImage
-    ) { base, p, listen, img ->
-        base.copy(pending = p, isListening = listen, pendingImage = img)
+        pendingImage,
+        muted
+    ) { base, p, listen, img, mute ->
+        base.copy(
+            pending = p,
+            isListening = listen,
+            pendingImage = img,
+            isMuted = mute
+        )
     }
         .stateIn(viewModelScope, SharingStarted.Eagerly, ChatUiState())
 
@@ -245,6 +257,16 @@ class ChatViewModel(
         streamJob = null
     }
 
+    /**
+     * Cancels any in-flight response and waits until the cancellation has
+     * fully unwound (so [responding] is back to false). Use this from the
+     * voice mode loop before sending a barge-in turn.
+     */
+    suspend fun cancelAndAwait() {
+        streamJob?.cancelAndJoin()
+        streamJob = null
+    }
+
     fun dismissPending() {
         pending.value = null
     }
@@ -333,7 +355,65 @@ class ChatViewModel(
     /** Callback set by the UI to receive partial/final speech text */
     var onSttResult: ((String) -> Unit)? = null
 
+    /** Fires only on final STT results. Used by hands-free voice mode to auto-send. */
+    var onSttFinalResult: ((String) -> Unit)? = null
+
+    /** Fires when the recognizer first detects speech. Used to barge in (stop TTS). */
+    var onSttSpeechStart: (() -> Unit)? = null
+
+    /** One-shot listening (used by the input bar mic). */
     fun startListening() {
+        continuousMode = false
+        startListeningInternal()
+    }
+
+    /**
+     * Always-on listening for hands-free voice mode. Auto-restarts the
+     * recognizer after each session end (final result, no-match, or error)
+     * unless [muted] is set or [stopContinuousListening] is called.
+     */
+    fun startContinuousListening() {
+        continuousMode = true
+        if (!muted.value) startListeningInternal()
+    }
+
+    fun stopContinuousListening() {
+        continuousMode = false
+        restartJob?.cancel()
+        restartJob = null
+        stopListeningInternal()
+    }
+
+    fun stopListening() {
+        continuousMode = false
+        restartJob?.cancel()
+        restartJob = null
+        stopListeningInternal()
+    }
+
+    /**
+     * Toggle the recognizer mute. While muted the mic is paused even in
+     * [continuousMode], so user speech doesn't interrupt the AI response or
+     * trigger another turn.
+     */
+    fun setMuted(value: Boolean) {
+        if (muted.value == value) return
+        muted.value = value
+        if (value) {
+            stopListeningInternal()
+        } else if (continuousMode) {
+            startListeningInternal()
+        }
+    }
+
+    private fun stopListeningInternal() {
+        speechRecognizer?.stopListening()
+        speechRecognizer?.destroy()
+        speechRecognizer = null
+        listening.value = false
+    }
+
+    private fun startListeningInternal() {
         if (!SpeechRecognizer.isRecognitionAvailable(app)) return
         speechRecognizer?.destroy()
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(app)
@@ -347,15 +427,24 @@ class ChatViewModel(
 
         speechRecognizer?.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) { listening.value = true }
-            override fun onBeginningOfSpeech() {}
+            override fun onBeginningOfSpeech() {
+                onSttSpeechStart?.invoke()
+            }
             override fun onRmsChanged(rmsdB: Float) {}
             override fun onBufferReceived(buffer: ByteArray?) {}
             override fun onEndOfSpeech() { listening.value = false }
-            override fun onError(error: Int) { listening.value = false }
+            override fun onError(error: Int) {
+                listening.value = false
+                if (continuousMode && !muted.value) scheduleRestart()
+            }
             override fun onResults(results: Bundle?) {
                 val text = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    ?.firstOrNull() ?: return
-                onSttResult?.invoke(text)
+                    ?.firstOrNull()
+                if (text != null) {
+                    onSttResult?.invoke(text)
+                    onSttFinalResult?.invoke(text)
+                }
+                if (continuousMode && !muted.value) scheduleRestart()
             }
             override fun onPartialResults(partial: Bundle?) {
                 val text = partial?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
@@ -367,15 +456,18 @@ class ChatViewModel(
         speechRecognizer?.startListening(intent)
     }
 
-    fun stopListening() {
-        speechRecognizer?.stopListening()
-        speechRecognizer?.destroy()
-        speechRecognizer = null
-        listening.value = false
+    private fun scheduleRestart() {
+        restartJob?.cancel()
+        restartJob = viewModelScope.launch {
+            // Small breath so SpeechRecognizer can release cleanly before we re-arm.
+            delay(250)
+            if (continuousMode && !muted.value) startListeningInternal()
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
+        restartJob?.cancel()
         speechRecognizer?.destroy()
         streamJob?.cancel()
     }

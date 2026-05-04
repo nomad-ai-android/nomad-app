@@ -17,6 +17,9 @@ import com.nomad.travel.llm.ModelCatalog
 import com.nomad.travel.llm.ModelDownloader
 import com.nomad.travel.llm.ModelEntry
 import com.nomad.travel.tools.ContextStrategy
+import com.nomad.travel.tts.SystemTtsEngine
+import com.nomad.travel.tts.TtsManager
+import com.nomad.travel.tts.TtsModelCatalog
 import com.nomad.travel.ui.setup.ModelRow
 import com.nomad.travel.update.UpdateManager
 import com.nomad.travel.update.UpdateState
@@ -36,7 +39,10 @@ data class SettingsUiState(
     val updateState: UpdateState = UpdateState.Idle,
     val currentVersion: String = BuildConfig.VERSION_NAME,
     val autoUpdateCheck: Boolean = true,
-    val cameraInstantPreview: Boolean = false
+    val cameraInstantPreview: Boolean = false,
+    val ttsEngineId: String = SystemTtsEngine.ID,
+    val ttsModelRows: List<ModelRow> = emptyList(),
+    val voiceLoopEnabled: Boolean = true
 )
 
 class SettingsViewModel(
@@ -45,7 +51,8 @@ class SettingsViewModel(
     private val downloader: ModelDownloader,
     private val chatRepo: ChatRepository,
     private val device: DeviceCapability,
-    private val updateManager: UpdateManager
+    private val updateManager: UpdateManager,
+    private val tts: TtsManager
 ) : ViewModel() {
 
     private val refreshTick = MutableStateFlow(0)
@@ -54,31 +61,60 @@ class SettingsViewModel(
         ModelCatalog.all.map { downloader.status(it) }
     ) { arr -> arr.toList() }
 
-    val state: StateFlow<SettingsUiState> = combine(
-        combine(
-            prefs.language,
-            prefs.systemPrompt,
-            prefs.activeModelId,
-            prefs.contextStrategy,
-            prefs.cameraInstantPreview
-        ) { lang, prompt, activeId, strategy, cameraInstant ->
-            listOf(lang, prompt, activeId, strategy, cameraInstant)
-        },
-        statusesFlow,
-        refreshTick,
-        updateManager.state,
+    private val ttsStatusesFlow = combine(
+        TtsModelCatalog.all.map { downloader.status(it) }
+    ) { arr -> arr.toList() }
+
+    private val basePrefsFlow = combine(
+        prefs.language,
+        prefs.systemPrompt,
+        prefs.activeModelId,
+        prefs.contextStrategy,
+        prefs.cameraInstantPreview
+    ) { lang, prompt, activeId, strategy, cameraInstant ->
+        listOf(lang, prompt, activeId, strategy, cameraInstant)
+    }
+
+    private val ttsPrefsFlow = combine(
+        prefs.ttsEngine,
+        prefs.voiceLoopEnabled,
         prefs.autoUpdateCheck
-    ) { base, statuses, _, uState, autoUpdate ->
+    ) { engine, loop, auto -> Triple(engine, loop, auto) }
+
+    private val statusBundleFlow = combine(
+        statusesFlow,
+        ttsStatusesFlow
+    ) { llm, tts -> llm to tts }
+
+    val state: StateFlow<SettingsUiState> = combine(
+        basePrefsFlow,
+        ttsPrefsFlow,
+        statusBundleFlow,
+        refreshTick,
+        updateManager.state
+    ) { base, ttsTriple, statusBundle, _, uState ->
         val lang = base[0] as String?
         val prompt = base[1] as String?
         val activeId = base[2] as String?
         val strategy = base[3] as String?
         val cameraInstant = base[4] as Boolean
+        val (ttsEngineId, voiceLoop, autoUpdate) = ttsTriple
+        val (llmStatuses, ttsStatuses) = statusBundle
+
         val rows = ModelCatalog.all.mapIndexed { i, entry ->
             ModelRow(
                 entry = entry,
                 downloaded = gemma.isDownloaded(entry),
-                status = statuses.getOrNull(i) ?: DownloadStatus.Idle,
+                status = llmStatuses.getOrNull(i) ?: DownloadStatus.Idle,
+                ramEligible = device.isEligible(entry),
+                ramWarning = device.shouldWarn(entry)
+            )
+        }
+        val ttsRows = TtsModelCatalog.all.mapIndexed { i, entry ->
+            ModelRow(
+                entry = entry,
+                downloaded = tts.isModelDownloaded(entry),
+                status = ttsStatuses.getOrNull(i) ?: DownloadStatus.Idle,
                 ramEligible = device.isEligible(entry),
                 ramWarning = device.shouldWarn(entry)
             )
@@ -91,7 +127,10 @@ class SettingsViewModel(
             contextStrategy = ContextStrategy.from(strategy),
             updateState = uState,
             autoUpdateCheck = autoUpdate,
-            cameraInstantPreview = cameraInstant
+            cameraInstantPreview = cameraInstant,
+            ttsEngineId = ttsEngineId ?: SystemTtsEngine.ID,
+            ttsModelRows = ttsRows,
+            voiceLoopEnabled = voiceLoop
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, SettingsUiState())
 
@@ -135,6 +174,25 @@ class SettingsViewModel(
         refreshTick.value++
     }
 
+    fun startTtsDownload(entry: ModelEntry) {
+        if (!tts.isModelDownloaded(entry)) downloader.start(entry, tts.fileFor(entry))
+    }
+
+    fun cancelTtsDownload(entry: ModelEntry) = downloader.cancel(entry)
+
+    fun deleteTtsModel(entry: ModelEntry) {
+        tts.deleteModel(entry)
+        refreshTick.value++
+    }
+
+    fun setTtsEngine(id: String) {
+        viewModelScope.launch { prefs.setTtsEngine(id) }
+    }
+
+    fun setVoiceLoopEnabled(enabled: Boolean) {
+        viewModelScope.launch { prefs.setVoiceLoopEnabled(enabled) }
+    }
+
     fun selectModel(entry: ModelEntry) {
         if (!device.isEligible(entry)) return
         if (!gemma.isDownloaded(entry)) return
@@ -171,7 +229,8 @@ class SettingsViewModel(
                     downloader = app.container.downloader,
                     chatRepo = app.container.chatRepository,
                     device = app.container.device,
-                    updateManager = app.container.updateManager
+                    updateManager = app.container.updateManager,
+                    tts = app.container.tts
                 ) as T
             }
         }

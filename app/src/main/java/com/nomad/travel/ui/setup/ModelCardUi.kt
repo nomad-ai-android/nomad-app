@@ -86,14 +86,20 @@ fun ModelCard(
                     .weight(1f)
                     .alpha(if (blocked) 0.5f else 1f)
             ) {
+                val name = if (row.entry.displayNameResId != 0)
+                    stringResource(row.entry.displayNameResId)
+                else row.entry.displayName
+                val tagline = if (row.entry.taglineResId != 0)
+                    stringResource(row.entry.taglineResId)
+                else row.entry.tagline
                 Text(
-                    text = row.entry.displayName,
+                    text = name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 Spacer(Modifier.size(2.dp))
                 Text(
-                    text = row.entry.tagline,
+                    text = tagline,
                     style = MaterialTheme.typography.bodySmall
                 )
             }

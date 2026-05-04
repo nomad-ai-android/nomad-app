@@ -11,7 +11,7 @@ import com.nomad.travel.llm.ModelDownloader
 import com.nomad.travel.ocr.OcrService
 import com.nomad.travel.tools.CurrencyService
 import com.nomad.travel.tools.ToolRouter
-import com.nomad.travel.tts.TtsService
+import com.nomad.travel.tts.TtsManager
 import com.nomad.travel.update.UpdateManager
 
 interface AppContainer {
@@ -25,7 +25,7 @@ interface AppContainer {
     val chatRepository: ChatRepository
     val device: DeviceCapability
     val updateManager: UpdateManager
-    val tts: TtsService
+    val tts: TtsManager
 }
 
 class DefaultAppContainer(context: Context) : AppContainer {
@@ -40,7 +40,7 @@ class DefaultAppContainer(context: Context) : AppContainer {
 
     override val updateManager: UpdateManager by lazy { UpdateManager(appContext) }
 
-    override val tts: TtsService by lazy { TtsService(appContext) }
+    override val tts: TtsManager by lazy { TtsManager(appContext, prefs) }
 
     override val chatRepository: ChatRepository by lazy {
         val db = ChatDatabase.get(appContext)
